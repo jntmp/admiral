@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Vector3 } from 'three';
-import { GRAVITY, PHYSICS, RELEASE_HEIGHT, RIM, SHOT } from '../src/config.js';
+import { BOARD, GRAVITY, PHYSICS, RELEASE_HEIGHT, RIM, SHOT } from '../src/config.js';
 import { Ball, createHoopState, stepBall } from '../src/physics.js';
 import {
   aimedVelocity,
@@ -9,6 +9,7 @@ import {
   isThreePointer,
   launchAngle,
   pickSpot,
+  previewPath,
   rimTarget,
   swipeToShot,
 } from '../src/shot.js';
@@ -127,4 +128,49 @@ test('spots stay on the court and move between shots', () => {
     assert.equal(spot.y, RELEASE_HEIGHT);
     prev = spot;
   }
+});
+
+test('the aim preview traces the real flight up to first contact', () => {
+  for (const [distance, degrees, power, yaw] of [[3, 0, 1, 0], [6, 40, 1.1, 0.05], [7.5, -60, 0.9, -0.1]]) {
+    const from = spotAt(distance, degrees);
+    const vel = aimedVelocity(from, rimTarget(), power, yaw);
+    const { points } = previewPath(from, vel);
+    const ball = new Ball();
+    ball.launch(from, vel);
+    const hoop = createHoopState();
+    const events = [];
+    let t = 0;
+    // Step the real simulation alongside the preview until something touches.
+    for (const dot of points) {
+      while (ball.pos.distanceTo(from) < dot.distanceTo(from) - 1e-9 && events.length === 0 && t < 4) {
+        stepBall(ball, hoop, PHYSICS.substep, events);
+        t += PHYSICS.substep;
+      }
+      if (events.length || ball.touchedRim || ball.touchedBoard) break;
+      const onPath = ballisticPoint(from, vel, t);
+      assert.ok(ball.pos.distanceTo(onPath) < 1e-9, 'physics stays on the drawn parabola');
+    }
+  }
+});
+
+test('the aim preview ends where the ball arrives', () => {
+  const from = spotAt(5, 20);
+  const ideal = previewPath(from, aimedVelocity(from, rimTarget(), 1, 0));
+  assert.equal(ideal.end.surface, 'rim');
+  assert.ok(ideal.end.at.distanceTo(rimTarget()) < 0.01, 'a perfect throw ends in the middle of the rim');
+
+  const long = previewPath(from, aimedVelocity(from, rimTarget(), 1.06, 0));
+  assert.equal(long.end.surface, 'board');
+  assert.ok(Math.abs(long.end.at.z - (BOARD.front + 0.12)) < 1e-9);
+
+  const over = previewPath(from, aimedVelocity(from, rimTarget(), 1.25, 0));
+  assert.ok(over.end.at.z < BOARD.front, 'sails over the backboard');
+
+  const short = previewPath(from, aimedVelocity(from, rimTarget(), 0.7, 0));
+  assert.equal(short.end.surface, 'floor');
+
+  // Dots are evenly spaced and never sit on top of the ball.
+  const gaps = ideal.points.slice(1).map((p, i) => p.distanceTo(ideal.points[i]));
+  assert.ok(ideal.points[0].distanceTo(from) >= 0.45);
+  assert.ok(gaps.every((g) => g > 0.15 && g < 0.26));
 });

@@ -1,5 +1,5 @@
 import { Vector3 } from 'three';
-import { COURT, GAME, GRAVITY, RELEASE_HEIGHT, RIM, SHOT } from './config.js';
+import { BALL_RADIUS, BOARD, COURT, GAME, GRAVITY, RELEASE_HEIGHT, RIM, SHOT } from './config.js';
 
 const DEG = Math.PI / 180;
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
@@ -57,6 +57,47 @@ export function ballisticPoint(from, vel, t, out = new Vector3()) {
     from.y + vel.y * t - 0.5 * GRAVITY * t * t,
     from.z + vel.z * t,
   );
+}
+
+// The whole flight of a throw until its first contact: dropping through the
+// rim's plane from above, meeting the backboard, or reaching the floor.
+// Returns dots spaced `spacing` metres apart along the path (skipping the
+// first `skip` metres so they don't sit on the ball) and where it ends.
+export function previewPath(from, vel, hoopX = 0, { spacing = 0.24, skip = 0.5, step = 1 / 240 } = {}) {
+  const points = [];
+  const prev = from.clone();
+  const p = new Vector3();
+  const boardFace = BOARD.front + BALL_RADIUS;
+  const boardTop = BOARD.bottom + BOARD.height;
+  let travelled = 0;
+  let nextDot = skip;
+  for (let t = step; t < 4; t += step) {
+    ballisticPoint(from, vel, t, p);
+    travelled += p.distanceTo(prev);
+    let end = null;
+    if (prev.y > RIM.y && p.y <= RIM.y) {
+      // Interpolate to the exact crossing.
+      const f = (prev.y - RIM.y) / (prev.y - p.y);
+      end = { at: prev.clone().lerp(p, f), surface: 'rim' };
+    } else if (
+      prev.z > boardFace &&
+      p.z <= boardFace &&
+      p.y > BOARD.bottom - BALL_RADIUS &&
+      p.y < boardTop + BALL_RADIUS &&
+      Math.abs(p.x - hoopX) < BOARD.width / 2 + BALL_RADIUS
+    ) {
+      end = { at: p.clone().setZ(boardFace), surface: 'board' };
+    } else if (p.y <= BALL_RADIUS) {
+      end = { at: p.clone().setY(BALL_RADIUS), surface: 'floor' };
+    }
+    if (end) return { points, end };
+    while (travelled >= nextDot) {
+      points.push(p.clone());
+      nextDot += spacing;
+    }
+    prev.copy(p);
+  }
+  return { points, end: { at: prev.clone(), surface: 'floor' } };
 }
 
 export function isThreePointer(x, z) {

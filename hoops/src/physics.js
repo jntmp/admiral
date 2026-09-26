@@ -195,10 +195,15 @@ function checkNet(ball, hoop, prevY, dt, events) {
 
 // Advance one ball by one fixed substep, appending contact events.
 export function stepBall(ball, hoop, dt, events) {
-  const prevY = ball.pos.y;
+  const { pos, vel } = ball;
+  const prevY = pos.y;
   ball.age += dt;
-  ball.vel.y -= GRAVITY * dt;
-  ball.pos.addScaledVector(ball.vel, dt);
+  // Exact for constant gravity, so free flight lands precisely on the
+  // parabola the aim preview draws.
+  pos.x += vel.x * dt;
+  pos.y += vel.y * dt - 0.5 * GRAVITY * dt * dt;
+  pos.z += vel.z * dt;
+  vel.y -= GRAVITY * dt;
 
   collideFloor(ball, dt, events);
   collideBounds(ball);

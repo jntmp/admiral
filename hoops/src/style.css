@@ -141,6 +141,52 @@ body {
   display: block;
 }
 
+.power {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + var(--gutter));
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.power-label {
+  font-family: var(--terminal);
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+/* Segments stack bottom-up; the live swipe lights them from the bottom. */
+.power-bar {
+  width: 22px;
+  height: min(36vh, 280px);
+  padding: 3px;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  background: rgba(11, 15, 34, 0.75);
+  box-shadow: 0 0 0 2px var(--muted), 4px 4px 0 2px var(--ink);
+}
+
+.power-bar i {
+  flex: 1;
+  background: rgba(138, 147, 184, 0.16);
+}
+
+.power-bar i.on {
+  background: var(--seg);
+}
+
+.power.fired .power-bar {
+  box-shadow: 0 0 0 2px var(--cream), 4px 4px 0 2px var(--ink);
+}
+
 .shot-info {
   grid-column: 1 / -1;
   grid-row: 3;
