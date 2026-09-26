@@ -2,6 +2,8 @@
 
 A casual arcade basketball shooter built with [three.js](https://threejs.org). You get 60 seconds; drag up and let go to shoot, and sink as many as you can.
 
+**Play it:** https://jntmp.github.io/admiral/
+
 The 3D arena is rendered at about 240 lines, scaled up by a whole number with nearest-neighbour sampling so every art pixel is the same size, then inked with depth outlines and colour-quantised with a Bayer dither. The result reads like hand-drawn pixel art while the camera still moves freely through real 3D.
 
 ## Run it
@@ -13,6 +15,8 @@ npm run dev      # http://localhost:5173
 npm run build    # static site in dist/, works from any folder
 npm test         # physics and shot-mapping tests (node:test, no browser)
 ```
+
+Every push to `master` that touches `hoops/` is tested, built and deployed to GitHub Pages by `.github/workflows/hoops-pages.yml`. Pull requests get the tests and build without the deploy.
 
 ## How to play
 
