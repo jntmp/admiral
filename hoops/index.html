@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <title>Pixel Hoops</title>
+    <meta name="description" content="A casual pixel-art basketball shooting game. Drag up to shoot; sink as many as you can in 60 seconds." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <canvas id="game" aria-label="Basketball court"></canvas>
+
+    <div id="hud" class="hud" hidden>
+      <div class="stat stat-score">
+        <span class="stat-label">Score</span>
+        <span id="score" class="stat-value">0</span>
+      </div>
+      <div class="streak" id="streak" aria-live="polite">
+        <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+        <span class="fire-tag">On fire x2</span>
+      </div>
+      <div class="stat stat-time">
+        <span class="stat-label">Time</span>
+        <span id="time" class="stat-value">60</span>
+      </div>
+      <div class="shot-info">
+        <span id="shot-tag" class="shot-tag">2PT · 12 FT</span>
+        <span id="hint" class="hint">Drag up to shoot</span>
+      </div>
+    </div>
+
+    <div id="popups" class="popups" aria-live="polite"></div>
+    <div id="countdown" class="countdown" hidden></div>
+
+    <button id="mute" class="mute" type="button" aria-pressed="false" aria-label="Mute sound">
+      <svg viewBox="0 0 12 12" width="24" height="24" aria-hidden="true" shape-rendering="crispEdges">
+        <path fill="currentColor" d="M1 4h2v4H1zM3 4h1V3h1V2h1v8H5V9H4V8H3z" />
+        <path class="waves" fill="currentColor" d="M8 4h1v4H8zM10 3h1v6h-1z" />
+        <path class="cross" fill="currentColor" d="M8 4h1v1H8zM9 5h1v2H9zM10 4h1v1h-1zM8 7h1v1H8zM10 7h1v1h-1z" />
+      </svg>
+    </button>
+
+    <section id="title" class="screen">
+      <div class="panel">
+        <h1 class="logo">Pixel<br />Hoops</h1>
+        <p class="lede">60 seconds on the clock. Drag up and let go to shoot. Sink as many as you can.</p>
+        <ul class="rules">
+          <li><b>2</b> inside the arc, <b>3</b> from downtown</li>
+          <li><b>+1</b> for a swish, nothing but net</li>
+          <li><b>x2</b> once you hit three in a row</li>
+        </ul>
+        <button id="play" class="btn" type="button">Play</button>
+        <p class="best-line">Best <span id="best-title">0</span></p>
+      </div>
+    </section>
+
+    <section id="over" class="screen" hidden>
+      <div class="panel">
+        <h2 class="over-title">Time!</h2>
+        <p class="final"><span id="final-score">0</span><span class="final-unit">pts</span></p>
+        <p id="new-best" class="new-best" hidden>New best!</p>
+        <dl class="stats">
+          <div><dt>Made</dt><dd id="stat-made">0/0</dd></div>
+          <div><dt>Accuracy</dt><dd id="stat-pct">0%</dd></div>
+          <div><dt>Streak</dt><dd id="stat-streak">0</dd></div>
+          <div><dt>Best</dt><dd id="stat-best">0</dd></div>
+        </dl>
+        <button id="again" class="btn" type="button">Play again</button>
+      </div>
+    </section>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
