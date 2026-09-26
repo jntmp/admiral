@@ -1,6 +1,26 @@
 // Thin wrapper over the DOM overlay: the 3D scene never touches the page.
 const $ = (id) => document.getElementById(id);
 
+// Gauge segments shade from cream at the bottom through amber to rim red.
+const GAUGE_STOPS = [
+  [244, 236, 214],
+  [255, 194, 61],
+  [255, 77, 46],
+];
+
+function buildGauge(bar, count) {
+  return Array.from({ length: count }, (_, i) => {
+    const t = (i / (count - 1)) * (GAUGE_STOPS.length - 1);
+    const k = Math.min(Math.floor(t), GAUGE_STOPS.length - 2);
+    const f = t - k;
+    const rgb = GAUGE_STOPS[k].map((c, j) => Math.round(c + (GAUGE_STOPS[k + 1][j] - c) * f));
+    const seg = document.createElement('i');
+    seg.style.setProperty('--seg', `rgb(${rgb.join(' ')})`);
+    bar.append(seg);
+    return seg;
+  });
+}
+
 export class Hud {
   constructor() {
     this.root = $('hud');
@@ -15,6 +35,8 @@ export class Hud {
     this.countdownEl = $('countdown');
     this.title = $('title');
     this.over = $('over');
+    this.power = $('power');
+    this.segments = buildGauge($('power-bar'), 16);
     this.last = {};
   }
 
@@ -48,6 +70,13 @@ export class Hud {
       this.pips.forEach((pip, i) => pip.classList.toggle('on', i < v));
       this.streak.classList.toggle('fire', v >= needed);
     });
+  }
+
+  // level 0..1 fills the gauge from the bottom; fired marks a released shot.
+  setPower(level, fired) {
+    const lit = Math.round(Math.min(Math.max(level, 0), 1) * this.segments.length);
+    this.set('power', lit, (v) => this.segments.forEach((seg, i) => seg.classList.toggle('on', i < v)));
+    this.set('fired', fired, (v) => this.power.classList.toggle('fired', v));
   }
 
   setShot(three, feet) {

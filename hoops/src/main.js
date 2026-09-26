@@ -11,7 +11,7 @@ import {
 } from 'three';
 import { buildArena } from './arena.js';
 import { Sfx } from './audio.js';
-import { BALL_RADIUS, GAME, PHYSICS, RIM } from './config.js';
+import { BALL_RADIUS, GAME, PHYSICS, RIM, SHOT } from './config.js';
 import { AimDots, Particles } from './fx.js';
 import { buildHoop } from './hoop.js';
 import { Hud } from './hud.js';
@@ -19,10 +19,10 @@ import { Ball, createHoopState, stepBall } from './physics.js';
 import { PixelRenderer } from './pixel.js';
 import {
   aimedVelocity,
-  ballisticPoint,
   hoopMotion,
   isThreePointer,
   pickSpot,
+  previewPath,
   rimTarget,
   swipeToShot,
 } from './shot.js';
@@ -246,7 +246,6 @@ canvas.addEventListener('pointerup', (e) => e.pointerId === pointer.id && endDra
 canvas.addEventListener('pointercancel', (e) => e.pointerId === pointer.id && endDrag(false));
 
 const previewVel = new Vector3();
-const previewPoints = Array.from({ length: 9 }, () => new Vector3());
 function updateAim() {
   const shot = game.phase === 'aiming' ? currentSwipe() : null;
   if (!shot) {
@@ -254,8 +253,7 @@ function updateAim() {
     return;
   }
   aimedVelocity(game.spot, target, shot.power, shot.yaw, previewVel);
-  previewPoints.forEach((p, i) => ballisticPoint(game.spot, previewVel, 0.05 + i * 0.055, p));
-  aim.show(previewPoints);
+  aim.show(previewPath(game.spot, previewVel, hoop.x));
 }
 
 // ---------------------------------------------------------------- shots
@@ -562,8 +560,6 @@ function updateBalls(dt) {
   net.update(dt, balls.map((b) => b.body), hoop.x);
 }
 
-const camRight = new Vector3();
-const camUp = new Vector3();
 function updateHeld(dt) {
   if (!held) return;
   held.grow = Math.min(1, held.grow + dt * 5);
@@ -572,20 +568,30 @@ function updateHeld(dt) {
   const s = 1 + 2.2 * (g - 1) ** 3 + 1.2 * (g - 1) ** 2;
   held.mesh.scale.setScalar(Math.max(0.01, s));
   held.mesh.position.copy(game.spot);
-  held.mesh.position.y += Math.sin(game.clock * 3) * 0.015;
-  if (game.phase === 'aiming') {
-    // Let the ball follow the finger a touch.
-    camRight.setFromMatrixColumn(camera.matrixWorld, 0);
-    camUp.setFromMatrixColumn(camera.matrixWorld, 1);
-    const h = window.innerHeight;
-    const dx = Math.max(-0.3, Math.min(0.3, (pointer.x - pointer.x0) / h));
-    const dy = Math.max(-0.3, Math.min(0.5, (pointer.y0 - pointer.y) / h));
-    held.mesh.position.addScaledVector(camRight, dx * 0.25).addScaledVector(camUp, dy * 0.2);
-  }
+  // Bob while waiting; hold still while aiming so the preview starts on it.
+  if (game.phase !== 'aiming') held.mesh.position.y += Math.sin(game.clock * 3) * 0.015;
   held.mesh.rotation.y += dt * 0.8;
   const fire = onFire();
   if (held.fire !== fire) setFire(held, fire);
   if (fire) held.mesh.material.emissiveIntensity = 0.45 + Math.sin(game.clock * 14) * 0.2;
+}
+
+// The gauge follows the live swipe, holds the released value while the ball
+// flies, then drains. Full is twice the swipe length of a perfect throw.
+const power = { level: 0, hold: 0 };
+function updatePower(dt) {
+  if (game.phase === 'aiming') {
+    const h = window.innerHeight;
+    const dx = (pointer.x - pointer.x0) / h;
+    const dy = (pointer.y0 - pointer.y) / h;
+    power.level = dy > 0 ? Math.hypot(dx, dy) / SHOT.idealSwipe : 0;
+    power.hold = 0.9;
+  } else if (power.hold > 0) {
+    power.hold -= dt;
+  } else {
+    power.level = Math.max(0, power.level - dt * 3);
+  }
+  hud.setPower(power.level / 2, game.phase !== 'aiming' && power.hold > 0 && power.level > 0);
 }
 
 function updateHud() {
@@ -622,6 +628,7 @@ function frame(now) {
   updateCamera(dt);
   updateHeld(dt);
   updateAim();
+  updatePower(dt);
   particles.update(dt);
   crowd.update(dt, game.clock);
   updateHud();

@@ -2,8 +2,10 @@ import {
   BoxGeometry,
   Color,
   InstancedMesh,
+  Mesh,
   MeshBasicMaterial,
   Object3D,
+  TorusGeometry,
   Vector3,
 } from 'three';
 
@@ -83,30 +85,40 @@ export class Particles {
   }
 }
 
-// A dotted preview of the first stretch of the throw.
+// A dotted preview of the whole throw, with a ring where the ball arrives:
+// flat where it drops through rim height or lands, upright on the glass.
 export class AimDots {
-  constructor(scene, count = 9) {
-    this.mesh = new InstancedMesh(new BoxGeometry(0.045, 0.045, 0.045), new MeshBasicMaterial({ color: '#f4ecd6' }), count);
+  constructor(scene, count = 64) {
+    const cream = new MeshBasicMaterial({ color: '#f4ecd6' });
+    this.mesh = new InstancedMesh(new BoxGeometry(0.05, 0.05, 0.05), cream, count);
     this.mesh.frustumCulled = false;
     this.mesh.visible = false;
     this.count = count;
-    scene.add(this.mesh);
+    // Amber so the landing ring stands out against the white net and glass.
+    this.marker = new Mesh(new TorusGeometry(0.12, 0.022, 4, 20), new MeshBasicMaterial({ color: '#ffc23d' }));
+    this.marker.visible = false;
+    scene.add(this.mesh, this.marker);
   }
 
-  show(points) {
-    this.mesh.visible = true;
-    points.slice(0, this.count).forEach((p, i) => {
-      dummy.position.copy(p);
+  show({ points, end }) {
+    const n = Math.min(points.length, this.count);
+    for (let i = 0; i < n; i++) {
+      dummy.position.copy(points[i]);
       dummy.rotation.set(0, 0, 0);
-      dummy.scale.setScalar(1 - (i / this.count) * 0.5);
+      dummy.scale.setScalar(1);
       dummy.updateMatrix();
       this.mesh.setMatrixAt(i, dummy.matrix);
-    });
-    this.mesh.count = Math.min(points.length, this.count);
+    }
+    this.mesh.count = n;
     this.mesh.instanceMatrix.needsUpdate = true;
+    this.mesh.visible = true;
+    this.marker.position.copy(end.at);
+    this.marker.rotation.set(end.surface === 'board' ? 0 : Math.PI / 2, 0, 0);
+    this.marker.visible = true;
   }
 
   hide() {
     this.mesh.visible = false;
+    this.marker.visible = false;
   }
 }
