@@ -62,6 +62,14 @@ export const SHOT = {
   entryAngle: 46, // degrees below horizontal the ball drops into the rim at
 };
 
+// Supabase project behind the online leaderboard. The publishable key is
+// meant to ship in client code: row-level security and submit_score() in
+// supabase/migrations decide what it can do. Clear these to turn it off.
+export const LEADERBOARD = {
+  url: 'https://rgzdloqncygbclarargk.supabase.co',
+  key: 'sb_publishable_pakfnKUAlqDySOcutbhnmA_D27K6Vhl',
+};
+
 export const GAME = {
   duration: 60,
   fireStreak: 3,

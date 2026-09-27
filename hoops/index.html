@@ -56,7 +56,10 @@
           <li><b>+1</b> for a swish, nothing but net</li>
           <li><b>x2</b> once you hit three in a row</li>
         </ul>
-        <button id="play" class="btn" type="button">Play</button>
+        <div class="actions">
+          <button id="play" class="btn" type="button">Play</button>
+          <button id="board-from-title" class="btn btn-ghost" type="button" data-board>Leaderboard</button>
+        </div>
         <p class="best-line">Best <span id="best-title">0</span></p>
       </div>
     </section>
@@ -72,7 +75,39 @@
           <div><dt>Streak</dt><dd id="stat-streak">0</dd></div>
           <div><dt>Best</dt><dd id="stat-best">0</dd></div>
         </dl>
-        <button id="again" class="btn" type="button">Play again</button>
+        <form id="submit-form" class="submit-form" hidden>
+          <label for="initials">Enter your initials</label>
+          <div class="submit-row">
+            <input
+              id="initials"
+              name="initials"
+              maxlength="3"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              placeholder="AAA"
+            />
+            <button class="btn btn-small" type="submit">Submit</button>
+          </div>
+          <p id="submit-status" class="submit-status" aria-live="polite"></p>
+        </form>
+        <div class="actions">
+          <button id="again" class="btn" type="button">Play again</button>
+          <button id="board-from-over" class="btn btn-ghost" type="button" data-board>Leaderboard</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="board" class="screen" hidden>
+      <div class="panel">
+        <h2 class="board-title">Leaderboard</h2>
+        <div class="tabs" role="tablist" aria-label="Time range">
+          <button id="tab-week" class="tab" type="button" role="tab" aria-selected="true" data-range="week">This week</button>
+          <button id="tab-all" class="tab" type="button" role="tab" aria-selected="false" data-range="all">All time</button>
+        </div>
+        <ol id="board-list" class="board-list"></ol>
+        <p id="board-status" class="board-status" aria-live="polite"></p>
+        <button id="board-back" class="btn btn-ghost" type="button">Back</button>
       </div>
     </section>
 
