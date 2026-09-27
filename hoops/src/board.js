@@ -2,6 +2,17 @@ import { cleanInitials } from './leaderboard.js';
 
 const $ = (id) => document.getElementById(id);
 
+// Say what went wrong, including the browser's own reason when the request
+// never got an answer, so a failure report is something we can act on.
+function saveError(err) {
+  if (err.message.startsWith('Too many')) return err.message;
+  const reason = err.message ? ` (${err.message})` : '';
+  if (err.name === 'TypeError' || err.name === 'TimeoutError' || err.name === 'AbortError') {
+    return `Couldn't reach the leaderboard${reason}. Tap Submit to try again.`;
+  }
+  return `The leaderboard didn't accept that score${reason}.`;
+}
+
 const EMPTY = {
   week: 'No scores this week yet. Set the first one.',
   all: 'No scores yet. Set the first one.',
@@ -79,9 +90,7 @@ export class BoardUi {
     } catch (err) {
       if (this.result !== result) return;
       this.submitButton.disabled = false;
-      this.submitStatus.textContent = err.message.startsWith('Too many')
-        ? err.message
-        : "Couldn't save your score. Check your connection and try again.";
+      this.submitStatus.textContent = saveError(err);
     } finally {
       this.busy = false;
     }
@@ -113,9 +122,10 @@ export class BoardUi {
       if (request !== this.request) return;
       this.render(rows);
       this.status.textContent = rows.length ? '' : EMPTY[range];
-    } catch {
+    } catch (err) {
       if (request !== this.request) return;
-      this.status.textContent = "Couldn't load the leaderboard. Check your connection and try again.";
+      const reason = err.message ? ` (${err.message})` : '';
+      this.status.textContent = `Couldn't load the leaderboard${reason}. Check your connection and try again.`;
     }
   }
 

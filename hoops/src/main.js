@@ -16,7 +16,7 @@ import { BALL_RADIUS, GAME, LEADERBOARD, PHYSICS, RIM, SHOT } from './config.js'
 import { AimDots, Particles } from './fx.js';
 import { buildHoop } from './hoop.js';
 import { Hud } from './hud.js';
-import { Leaderboard } from './leaderboard.js';
+import { Leaderboard, newRoundId } from './leaderboard.js';
 import { Ball, createHoopState, stepBall } from './physics.js';
 import { PixelRenderer } from './pixel.js';
 import {
@@ -392,6 +392,7 @@ function startGame() {
     countdown: 3,
     lastTick: 4,
     shot: null,
+    round: newRoundId(),
   });
   hud.showPlay();
   hud.hint(true);
@@ -418,7 +419,13 @@ function endGame() {
     best: game.best,
     newBest,
   });
-  board.offer({ score: game.score, made: game.makes, attempts: game.attempts, bestStreak: game.bestStreak });
+  board.offer({
+    round: game.round,
+    score: game.score,
+    made: game.makes,
+    attempts: game.attempts,
+    bestStreak: game.bestStreak,
+  });
   crowd.cheer(newBest ? 1.5 : 0.6);
 }
 
