@@ -28,6 +28,7 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 - Shooting spots drift further out as you score. After 12 makes the hoop starts sliding side to side, and after 18 it speeds up.
 - A shot in the air when the buzzer goes still counts.
 - **M** or the speaker button toggles sound. Your best score is kept in `localStorage`.
+- After a round, enter three initials to post your score to the **online leaderboard**, then see where you rank this week and all time. The leaderboard is also on the title screen.
 
 ## How it's put together
 
@@ -43,5 +44,20 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 | `src/fx.js` | Confetti, fire sparks, aim dots |
 | `src/audio.js` | Web Audio synth for every sound effect (no audio files), through a low-pass, a short room reverb and a compressor |
 | `src/hud.js` | DOM overlay: score, clock, streak, power gauge, callouts, title and results screens |
+| `src/leaderboard.js` | Supabase REST client for reading top scores and submitting a round |
+| `src/board.js` | Initials form on the results screen and the leaderboard screen |
+| `supabase/migrations/` | The leaderboard's table, access rules and `submit_score` function |
 
 Every throw is aimed so the ball would drop into the rim at a fixed entry angle (46°), so a perfect swipe is a swish from any spot. Difficulty comes from how far a real swipe strays from perfect. Tune the feel in `src/config.js`: `SHOT.powerSensitivity` and `SHOT.aimSensitivity` set how forgiving swipes are, `RIM.radius` sets the size of the target, and `GAME` holds the round length and when the hoop starts moving.
+
+## Leaderboard
+
+Scores live in the Supabase project set in `LEADERBOARD` in `src/config.js`; clear its `url` or `key` to switch the leaderboard off. The game talks to Supabase's REST API with plain `fetch`, so there is no SDK in the bundle.
+
+The game runs in the browser, so a determined player can always send a fake score. The database keeps that bounded:
+
+- Anyone can read `scores`, but nobody can insert, edit or delete rows directly. Every write goes through `submit_score()`.
+- Check constraints reject anything a real round can't produce: three-character initials, at most 60 attempts, no more makes than attempts, and at most 8 points per make (a swished three, doubled on fire).
+- Each client can submit 5 scores a minute. Clients are tracked by a salted hash of their IP address, kept for an hour at most, in a schema the API doesn't expose.
+
+To run it against your own Supabase project, apply `supabase/migrations/*.sql` (with the Supabase CLI or the SQL editor), then put that project's URL and publishable key in `src/config.js`. On Supabase's free plan a project pauses after a week without traffic; the game shows the leaderboard as unreachable until you restore it from the dashboard.

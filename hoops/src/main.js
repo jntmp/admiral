@@ -11,10 +11,12 @@ import {
 } from 'three';
 import { buildArena } from './arena.js';
 import { Sfx } from './audio.js';
-import { BALL_RADIUS, GAME, PHYSICS, RIM, SHOT } from './config.js';
+import { BoardUi } from './board.js';
+import { BALL_RADIUS, GAME, LEADERBOARD, PHYSICS, RIM, SHOT } from './config.js';
 import { AimDots, Particles } from './fx.js';
 import { buildHoop } from './hoop.js';
 import { Hud } from './hud.js';
+import { Leaderboard } from './leaderboard.js';
 import { Ball, createHoopState, stepBall } from './physics.js';
 import { PixelRenderer } from './pixel.js';
 import {
@@ -71,6 +73,7 @@ const particles = new Particles(scene);
 const aim = new AimDots(scene);
 const sfx = new Sfx();
 const hud = new Hud();
+const board = new BoardUi(new Leaderboard(LEADERBOARD), store);
 const hoop = createHoopState();
 const target = rimTarget();
 
@@ -415,6 +418,7 @@ function endGame() {
     best: game.best,
     newBest,
   });
+  board.offer({ score: game.score, made: game.makes, attempts: game.attempts, bestStreak: game.bestStreak });
   crowd.cheer(newBest ? 1.5 : 0.6);
 }
 
@@ -658,6 +662,7 @@ muteButton.addEventListener('click', toggleMute);
 syncMute();
 
 window.addEventListener('keydown', (e) => {
+  if (e.target.closest?.('input')) return;
   if (e.key === 'm' || e.key === 'M') toggleMute();
 });
 
