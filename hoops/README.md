@@ -28,7 +28,7 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 - Shooting spots drift further out as you score. After 12 makes the hoop starts sliding side to side, and after 18 it speeds up.
 - A shot in the air when the buzzer goes still counts.
 - **M** or the speaker button toggles sound. Your best score is kept in `localStorage`.
-- After a round, enter three initials to post your score to the **online leaderboard**, then see where you rank this week and all time. The leaderboard is also on the title screen.
+- After a round, enter three initials (letters only, arcade style) to post your score to the **online leaderboard**, then see where you rank this week and all time. The leaderboard is also on the title screen.
 
 ## How it's put together
 
@@ -57,7 +57,7 @@ Scores live in the Supabase project set in `LEADERBOARD` in `src/config.js`; cle
 The game runs in the browser, so a determined player can always send a fake score. The database keeps that bounded:
 
 - Anyone can read `scores`, but nobody can insert, edit or delete rows directly. Every write goes through `submit_score()`.
-- Check constraints reject anything a real round can't produce: three-character initials, at most 60 attempts, no more makes than attempts, and at most 8 points per make (a swished three, doubled on fire).
+- Check constraints reject anything a real round can't produce: initials must be exactly three capital letters, as on an arcade high-score table; there are at most 60 attempts, no more makes than attempts, and at most 8 points per make (a swished three, doubled on fire).
 - Each client can submit 5 scores a minute. Clients are tracked by a salted hash of their IP address, kept for an hour at most, in a schema the API doesn't expose.
 
 To run it against your own Supabase project, apply `supabase/migrations/*.sql` (with the Supabase CLI or the SQL editor), then put that project's URL and publishable key in `src/config.js`. On Supabase's free plan a project pauses after a week without traffic; the game shows the leaderboard as unreachable until you restore it from the dashboard.

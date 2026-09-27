@@ -15,10 +15,12 @@ function fakeFetch(...responses) {
   return { fetch, calls };
 }
 
-test('initials are upper-cased, stripped to letters and digits, and cut to three', () => {
+test('initials are three capital letters: lower case is raised, anything else dropped', () => {
   assert.equal(cleanInitials('ab'), 'AB');
-  assert.equal(cleanInitials('j.t-9x'), 'JT9');
+  assert.equal(cleanInitials('j.t-9x'), 'JTX');
+  assert.equal(cleanInitials('a1b2c3d'), 'ABC');
   assert.equal(cleanInitials('  zé!'), 'Z');
+  assert.equal(cleanInitials('123'), '');
 });
 
 test('the leaderboard is off without a url, key or fetch', () => {

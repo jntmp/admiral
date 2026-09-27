@@ -6,8 +6,9 @@
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const TIMEOUT_MS = 8000;
 
+// Arcade-style initials: three capital letters, nothing else.
 export function cleanInitials(text) {
-  return text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
+  return text.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
 }
 
 export class Leaderboard {

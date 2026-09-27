@@ -51,7 +51,7 @@ export class BoardUi {
     this.form.hidden = !this.leaderboard.enabled || result.score <= 0;
     this.input.disabled = false;
     this.submitButton.disabled = false;
-    this.input.value = this.store.get('initials', '');
+    this.input.value = cleanInitials(String(this.store.get('initials', '')));
     this.submitStatus.textContent = '';
   }
 
@@ -59,7 +59,7 @@ export class BoardUi {
     if (!this.result || this.busy) return;
     const initials = cleanInitials(this.input.value);
     if (initials.length !== 3) {
-      this.submitStatus.textContent = 'Enter three letters or numbers.';
+      this.submitStatus.textContent = 'Enter three letters.';
       this.input.focus();
       return;
     }
