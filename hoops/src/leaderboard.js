@@ -1,9 +1,9 @@
 // Online leaderboard on Supabase, spoken to over its REST API with plain
-// fetch so the game doesn't carry an SDK. Reads come straight from the
-// public `scores` table; writes go through the `submit_score` function,
-// which validates and throttles them (see supabase/migrations).
+// fetch so the game doesn't carry an SDK. Boards are read through the
+// `top_scores` function, which lists each player once at their best; writes
+// go through `submit_score` and `submit_daily`, which validate and throttle
+// them and only take a player's new best (see supabase/migrations).
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const TIMEOUT_MS = 8000;
 // Waits before each retry of a request that never got an answer.
 const RETRY_DELAYS_MS = [700, 2000];
@@ -14,6 +14,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // never got a response: offline, dropped connection, blocked, or timed out.
 function isNetworkFailure(err) {
   return err?.name === 'TypeError' || err?.name === 'TimeoutError' || err?.name === 'AbortError';
+}
+
+// The server turned a round down because that player (their initials)
+// already has this score or better on the board; the message says so.
+export function isNotNewBest(err) {
+  return err?.code === 'PT409';
 }
 
 // A random id per round, so the server can recognise a retried save.
@@ -63,31 +69,30 @@ export class Leaderboard {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) {
-      let message = `HTTP ${res.status}`;
+      let body = {};
       try {
-        message = (await res.json()).message || message;
+        body = await res.json();
       } catch {
         // Not JSON; keep the status line.
       }
-      throw new Error(message);
+      const err = new Error(body.message || `HTTP ${res.status}`);
+      err.code = body.code;
+      throw err;
     }
     return res.json();
   }
 
-  // Top scores, best first; ties go to whoever set them first. 'daily' is
-  // today's challenge (UTC); 'week' and 'all' are classic rounds only.
+  // Top scores, best first, one row per player; ties go to whoever set the
+  // score first. 'daily' is today's challenge (UTC); 'week' (the last 7 days)
+  // and 'all' are classic rounds only.
   top(range = 'all', limit = 10, now = Date.now()) {
-    let query = `scores?select=initials,score,made,attempts,created_at&order=score.desc,created_at.asc&limit=${limit}`;
-    if (range === 'daily') {
-      query += `&challenge=eq.${new Date(now).toISOString().slice(0, 10)}`;
-    } else {
-      query += '&challenge=is.null';
-      if (range === 'week') query += `&created_at=gte.${encodeURIComponent(new Date(now - WEEK_MS).toISOString())}`;
-    }
-    return this.request(query);
+    const params = new URLSearchParams({ p_board: range, p_limit: String(limit) });
+    if (range === 'daily') params.set('p_day', new Date(now).toISOString().slice(0, 10));
+    return this.request(`rpc/top_scores?${params}`);
   }
 
-  // Saves a finished round and returns where it placed.
+  // Saves a finished round and returns where it placed: this week, and all
+  // time for the player's best (bestAll), which may be an older round.
   async submit({ round, initials, score, made, attempts, bestStreak }) {
     const rows = await this.request('rpc/submit_score', {
       method: 'POST',
@@ -101,7 +106,7 @@ export class Leaderboard {
       }),
     });
     const row = Array.isArray(rows) ? rows[0] : rows;
-    return { rankAll: Number(row.rank_all), rankWeek: Number(row.rank_week) };
+    return { rankAll: Number(row.rank_all), rankWeek: Number(row.rank_week), bestAll: Number(row.best_all) };
   }
 
   // Saves a daily-challenge round; `day` is the challenge's UTC date.
