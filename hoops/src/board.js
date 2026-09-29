@@ -1,11 +1,11 @@
-import { cleanInitials } from './leaderboard.js';
+import { cleanInitials, isNotNewBest } from './leaderboard.js';
 
 const $ = (id) => document.getElementById(id);
 
 // Say what went wrong, including the browser's own reason when the request
 // never got an answer, so a failure report is something we can act on.
 function saveError(err) {
-  if (err.message.startsWith('Too many')) return err.message;
+  if (isNotNewBest(err) || err.message.startsWith('Too many')) return err.message;
   const reason = err.message ? ` (${err.message})` : '';
   if (err.name === 'TypeError' || err.name === 'TimeoutError' || err.name === 'AbortError') {
     return `Couldn't reach the leaderboard${reason}. Tap Submit to try again.`;
@@ -93,9 +93,13 @@ export class BoardUi {
         rank = `#${rankDay} of ${players}`;
         message = `Saved: ${rank} today.`;
       } else {
-        const { rankWeek, rankAll } = await this.leaderboard.submit({ initials, ...result });
+        const { rankWeek, rankAll, bestAll } = await this.leaderboard.submit({ initials, ...result });
         rank = `#${rankWeek} this week`;
-        message = `Saved: #${rankWeek} this week, #${rankAll} all time.`;
+        // A new best for the week that doesn't beat an older all-time best.
+        message =
+          bestAll > result.score
+            ? `Saved: #${rankWeek} this week. Your best, ${bestAll}, is #${rankAll} all time.`
+            : `Saved: #${rankWeek} this week, #${rankAll} all time.`;
       }
       this.store.set('initials', initials);
       // A newer round took over the form while this one was saving.

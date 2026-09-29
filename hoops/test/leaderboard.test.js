@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cleanInitials, Leaderboard, newRoundId } from '../src/leaderboard.js';
+import { cleanInitials, isNotNewBest, Leaderboard, newRoundId } from '../src/leaderboard.js';
 
 const config = { url: 'https://example.supabase.co', key: 'sb_publishable_test' };
 
@@ -33,32 +33,33 @@ test('the leaderboard is off without a url, key or fetch', () => {
   assert.equal(new Leaderboard(config, async () => {}).enabled, true);
 });
 
-test('top scores: best first, ties to the earliest, week limited to 7 days', async () => {
+test('boards are read through top_scores, one row per player', async () => {
   const { fetch, calls } = fakeFetch({ body: [{ initials: 'ABC', score: 40 }] }, { body: [] });
   const board = new Leaderboard(config, fetch);
   const rows = await board.top('all');
   assert.deepEqual(rows, [{ initials: 'ABC', score: 40 }]);
 
   const all = new URL(calls[0].url);
-  assert.equal(all.origin + all.pathname, 'https://example.supabase.co/rest/v1/scores');
-  assert.equal(all.searchParams.get('order'), 'score.desc,created_at.asc');
-  assert.equal(all.searchParams.get('limit'), '10');
-  assert.equal(all.searchParams.get('created_at'), null);
-  assert.equal(all.searchParams.get('challenge'), 'is.null', 'classic boards leave out daily rounds');
+  assert.equal(all.origin + all.pathname, 'https://example.supabase.co/rest/v1/rpc/top_scores');
+  assert.equal(calls[0].init.method, undefined, 'a plain GET');
+  assert.equal(all.searchParams.get('p_board'), 'all');
+  assert.equal(all.searchParams.get('p_limit'), '10');
+  assert.equal(all.searchParams.get('p_day'), null);
   assert.equal(calls[0].init.headers.apikey, 'sb_publishable_test');
 
-  const now = Date.parse('2026-09-27T12:00:00Z');
-  await board.top('week', 10, now);
-  assert.equal(new URL(calls[1].url).searchParams.get('created_at'), 'gte.2026-09-20T12:00:00.000Z');
+  await board.top('week', 5);
+  const week = new URL(calls[1].url);
+  assert.equal(week.searchParams.get('p_board'), 'week');
+  assert.equal(week.searchParams.get('p_limit'), '5');
 });
 
-test("the daily board is today's challenge only", async () => {
+test("the daily board is today's challenge (UTC)", async () => {
   const { fetch, calls } = fakeFetch({ body: [] });
   const board = new Leaderboard(config, fetch);
   await board.top('daily', 10, Date.parse('2026-09-29T23:30:00Z'));
   const url = new URL(calls[0].url);
-  assert.equal(url.searchParams.get('challenge'), 'eq.2026-09-29');
-  assert.equal(url.searchParams.get('created_at'), null);
+  assert.equal(url.searchParams.get('p_board'), 'daily');
+  assert.equal(url.searchParams.get('p_day'), '2026-09-29');
 });
 
 test('daily rounds post to submit_daily with their day and get a rank among that day', async () => {
@@ -78,11 +79,11 @@ test('daily rounds post to submit_daily with their day and get a rank among that
   });
 });
 
-test('submitting posts to submit_score and returns both ranks', async () => {
-  const { fetch, calls } = fakeFetch({ body: [{ rank_all: 12, rank_week: 3 }] });
+test("submitting posts to submit_score and returns both ranks and the player's best", async () => {
+  const { fetch, calls } = fakeFetch({ body: [{ rank_all: 12, rank_week: 3, best_all: 50 }] });
   const board = new Leaderboard(config, fetch);
   const ranks = await board.submit(entry);
-  assert.deepEqual(ranks, { rankAll: 12, rankWeek: 3 });
+  assert.deepEqual(ranks, { rankAll: 12, rankWeek: 3, bestAll: 50 });
   assert.equal(calls[0].url, 'https://example.supabase.co/rest/v1/rpc/submit_score');
   assert.equal(calls[0].init.method, 'POST');
   assert.deepEqual(JSON.parse(calls[0].init.body), {
@@ -102,11 +103,26 @@ test('server errors surface their message', async () => {
   assert.equal(calls.length, 1, 'an answer from the server is final, not retried');
 });
 
+test('a score that is not a new best for those initials is turned down, not retried', async () => {
+  const message = 'ABC already has 50 this week. Only a higher score goes on the board.';
+  const { fetch, calls } = fakeFetch({ status: 409, body: { code: 'PT409', message } });
+  const board = new Leaderboard(config, fetch, async () => {});
+  const err = await board.submit(entry).catch((e) => e);
+  assert.equal(err.message, message);
+  assert.ok(isNotNewBest(err));
+  assert.equal(calls.length, 1);
+
+  const other = await new Leaderboard(config, fakeFetch({ status: 400, body: { code: 'P0001', message: 'Too many' } }).fetch)
+    .submit(entry)
+    .catch((e) => e);
+  assert.equal(isNotNewBest(other), false);
+});
+
 test('a save that never reaches the server is retried with the same round', async () => {
-  const { fetch, calls } = fakeFetch({ fail: 'Load failed' }, { fail: 'Load failed' }, { body: [{ rank_all: 2, rank_week: 1 }] });
+  const { fetch, calls } = fakeFetch({ fail: 'Load failed' }, { fail: 'Load failed' }, { body: [{ rank_all: 2, rank_week: 1, best_all: 42 }] });
   const waits = [];
   const board = new Leaderboard(config, fetch, async (ms) => waits.push(ms));
-  assert.deepEqual(await board.submit(entry), { rankAll: 2, rankWeek: 1 });
+  assert.deepEqual(await board.submit(entry), { rankAll: 2, rankWeek: 1, bestAll: 42 });
   assert.equal(calls.length, 3);
   assert.deepEqual(waits, [700, 2000]);
   assert.ok(calls.every((c) => c.init.body === calls[0].init.body), 'every attempt sends the same round');

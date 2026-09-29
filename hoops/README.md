@@ -29,6 +29,7 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 - A shot in the air when the buzzer goes still counts.
 - **M** or the speaker button toggles sound. Your best score is kept in `localStorage`.
 - After a round, enter three initials (letters only, arcade style) to post your score to the **online leaderboard**, then see where you rank this week and all time. The leaderboard is also on the title screen.
+- Each set of initials is on a board once, at its best. A score only goes up if it beats your best on that board: for classic rounds, your best from the last 7 days (so you can still make the weekly board after a quieter week), and for a daily, your score on that day's challenge.
 - **Share** your round as a Wordle-style card: one square per shot (🟨 swish, 🟧 make, ⬜ went in but didn't count, ⬛ miss), your score, your rank and a link. Phones get the share sheet; elsewhere it's copied to the clipboard.
 
 ### Daily challenge
@@ -63,7 +64,7 @@ Everyone plays the same round each day: the date (UTC) picks the twist and seeds
 | `src/board.js` | Initials form on the results screen and the leaderboard screen |
 | `src/daily.js` | Daily challenge: the day's twist, seeded shooting spots, scoring rules, share text |
 | `src/share.js` | Share card: squares on the results screen, share sheet or clipboard |
-| `supabase/migrations/` | The leaderboard's table, access rules and `submit_score` function |
+| `supabase/migrations/` | The leaderboard's table and access rules, and the `submit_score`, `submit_daily` and `top_scores` functions |
 
 Every throw is aimed so the ball would drop into the rim at a fixed entry angle (46°), so a perfect swipe is a swish from any spot. Difficulty comes from how far a real swipe strays from perfect. Tune the feel in `src/config.js`: `SHOT.powerSensitivity` and `SHOT.aimSensitivity` set how forgiving swipes are, `RIM.radius` sets the size of the target, and `GAME` holds the round length and when the hoop starts moving.
 
@@ -73,7 +74,8 @@ Scores live in the Supabase project set in `LEADERBOARD` in `src/config.js`; cle
 
 The game runs in the browser, so a determined player can always send a fake score. The database keeps that bounded:
 
-- Anyone can read `scores`, but nobody can insert, edit or delete rows directly. Every write goes through `submit_score()`.
+- Anyone can read `scores`, but nobody can insert, edit or delete rows directly. Every write goes through `submit_score()` or `submit_daily()`.
+- Only a player's new best is stored. Initials are the only identity the game has, so they stand for the player: a round that doesn't beat that player's best on its board (last 7 days for classic rounds, the same day for a daily) is turned down with a 409 and a message saying what the best is. The game reads boards through `top_scores()`, which lists each player once at their best.
 - Check constraints reject anything a real round can't produce: initials must be exactly three capital letters, as on an arcade high-score table; there are at most 60 attempts, no more makes than attempts, and at most 8 points per make (a swished three, doubled on fire).
 - Each client can submit 5 scores a minute. Clients are tracked by a salted hash of their IP address, kept for an hour at most, in a schema the API doesn't expose.
 - Every round carries a random id. If a save never gets an answer (a dropped mobile connection, say), the game retries it up to twice, and the server returns the stored result for a round it already has instead of adding a second row.
