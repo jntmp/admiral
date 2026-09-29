@@ -173,6 +173,30 @@ export class Sfx {
     this.hiss({ dur: 0.22, gain: 0.06, attack: 0.05, freq: 500, to: 1500, q: 1 });
   }
 
+  // A cartoon bonk: a hollow knock and a falling boing.
+  bonk() {
+    if (!this.ready) return;
+    this.tone({ type: 'square', freq: 220, to: 110, dur: 0.1, gain: 0.1, attack: 0.002, lowpass: 900 });
+    this.tone({ type: 'sine', freq: 740, to: 185, dur: 0.38, gain: 0.14, attack: 0.004 });
+    this.hiss({ dur: 0.05, gain: 0.1, filter: 'lowpass', freq: 1200, attack: 0.002 });
+  }
+
+  // Popcorn going everywhere: a scatter of tiny ticks.
+  popcorn() {
+    if (!this.ready) return;
+    for (let i = 0; i < 14; i++) {
+      this.hiss({ start: 0.02 + Math.random() * 0.7, dur: 0.02, gain: 0.05, filter: 'highpass', freq: 2600, attack: 0.002 });
+    }
+  }
+
+  // The crowd's sympathetic "ooooh": noise through a vowel-ish band that
+  // slides down.
+  ooh() {
+    if (!this.ready) return;
+    this.hiss({ start: 0.08, dur: 1.4, gain: 0.13, attack: 0.18, freq: 800, to: 420, q: 2.5 });
+    this.hiss({ start: 0.08, dur: 1.4, gain: 0.07, attack: 0.18, freq: 380, to: 260, q: 3 });
+  }
+
   tick(high = false) {
     if (!this.ready) return;
     this.tone({ type: 'sine', freq: high ? 990 : 660, dur: 0.14, gain: 0.09, attack: 0.005 });

@@ -27,6 +27,7 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 - **Three in a row** and you're on fire: every make scores double until you miss.
 - Shooting spots drift further out as you score. After 12 makes the hoop starts sliding side to side, and after 18 it speeds up.
 - A shot in the air when the buzzer goes still counts.
+- Your first **airball** of a session cuts to the fan cam: the ball finds the popcorn fan in the front row behind the hoop, right in the face. The clock stops for the cutscene; tap (or press Space, Enter or Escape) to skip it. It plays once per browser session, so later airballs just get the usual callout.
 - **M** or the speaker button toggles sound. Your best score is kept in `localStorage`.
 - After a round, enter three initials (letters only, arcade style) to post your score to the **online leaderboard**, then see where you rank this week and all time. The leaderboard is also on the title screen.
 - Each set of initials is on a board once, at its best. A score only goes up if it beats your best on that board: for classic rounds, your best from the last 7 days (so you can still make the weekly board after a quieter week), and for a daily, your score on that day's challenge.
@@ -64,6 +65,7 @@ Everyone plays the same round each day: the date (UTC) picks the twist and seeds
 | `src/board.js` | Initials form on the results screen and the leaderboard screen |
 | `src/daily.js` | Daily challenge: the day's twist, seeded shooting spots, scoring rules, share text |
 | `src/share.js` | Share card: squares on the results screen, share sheet or clipboard |
+| `src/cutscene.js` | The airball fan cam: the popcorn fan, the staged ball, the popcorn burst and the camera |
 | `supabase/migrations/` | The leaderboard's table and access rules, and the `submit_score`, `submit_daily` and `top_scores` functions |
 
 Every throw is aimed so the ball would drop into the rim at a fixed entry angle (46°), so a perfect swipe is a swish from any spot. Difficulty comes from how far a real swipe strays from perfect. Tune the feel in `src/config.js`: `SHOT.powerSensitivity` and `SHOT.aimSensitivity` set how forgiving swipes are, `RIM.radius` sets the size of the target, and `GAME` holds the round length and when the hoop starts moving.

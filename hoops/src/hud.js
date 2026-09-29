@@ -42,6 +42,9 @@ export class Hud {
     this.over = $('over');
     this.power = $('power');
     this.segments = buildGauge($('power-bar'), 16);
+    this.fancam = $('fancam');
+    this.fancamCaption = $('fancam-caption');
+    this.flash = $('cut-flash');
     this.last = {};
   }
 
@@ -140,6 +143,17 @@ export class Hud {
   fireBanner() {
     const meter = this.streak.getBoundingClientRect();
     this.popup(window.innerWidth / 2, meter.top - 14, { word: "You're on fire!", kind: 'fire' });
+  }
+
+  // The airball fan cam: letterbox bars, a REC tag and a caption, with a
+  // flash on each cut. The game HUD steps aside while it's up.
+  fanCam(on, caption = '') {
+    this.root.hidden = on;
+    this.fancam.hidden = !on;
+    this.fancamCaption.textContent = caption;
+    this.flash.classList.remove('go');
+    void this.flash.offsetWidth; // restart the flash
+    this.flash.classList.add('go');
   }
 
   countdown(text) {

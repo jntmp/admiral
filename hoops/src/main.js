@@ -13,6 +13,7 @@ import { buildArena } from './arena.js';
 import { Sfx } from './audio.js';
 import { BoardUi } from './board.js';
 import { BALL_RADIUS, BOARD, GAME, LEADERBOARD, PHYSICS, RIM, SHOT } from './config.js';
+import { Cutscene } from './cutscene.js';
 import { dailyNumber, dailySpots, dayKey, formatWait, makeCounts, twistFor, untilNextDay } from './daily.js';
 import { AimDots, Particles } from './fx.js';
 import { buildHoop } from './hoop.js';
@@ -68,6 +69,7 @@ const pixel = new PixelRenderer(renderer);
 
 const scene = new Scene();
 const camera = new PerspectiveCamera(58, 1, 0.1, 60);
+let baseFov = 58; // set by resize(); the fan cam zooms in from it
 const { scoreboard, crowd } = buildArena(scene);
 const { group: hoopGroup, net } = buildHoop();
 scene.add(hoopGroup);
@@ -85,6 +87,7 @@ const ballGeometry = new SphereGeometry(BALL_RADIUS, 16, 12);
 const ballMap = ballTexture();
 const balls = []; // everything in the air or rolling around
 let held = null; // the ball waiting in the shooter's hands
+const cutscene = new Cutscene(scene, crowd, particles, sfx, new Mesh(ballGeometry, new MeshLambertMaterial({ map: ballMap })));
 
 const game = {
   mode: 'title', // title | countdown | play | over
@@ -180,7 +183,19 @@ function tweenCamera(pos, look, duration) {
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
+function setFov(fov) {
+  if (camera.fov === fov) return;
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
+}
+
 function updateCamera(dt) {
+  if (cutscene.active) {
+    setFov(cutscene.fov(camera.aspect));
+    cutscene.aim(camera);
+    return;
+  }
+  setFov(baseFov);
   if (game.mode === 'title' || game.mode === 'over') {
     const a = Math.sin(game.clock * 0.12) * 0.85;
     tmpPos.set(Math.sin(a) * 8.5, 3.4, Math.cos(a) * 8.5 + 0.5);
@@ -222,6 +237,10 @@ function currentSwipe() {
 
 canvas.addEventListener('pointerdown', (e) => {
   sfx.unlock();
+  if (cutscene.active) {
+    cutscene.skip();
+    return;
+  }
   if (game.mode !== 'play' || game.phase !== 'ready' || pointer.id !== null) return;
   pointer.id = e.pointerId;
   pointer.x0 = pointer.x = e.clientX;
@@ -387,19 +406,75 @@ function onMiss(b) {
   game.streak = 0;
   game.shots.push('miss');
   const { touchedRim, touchedBoard } = b.body;
-  const word = !touchedRim && !touchedBoard ? 'Airball' : touchedRim ? pick(RIM_WORDS) : 'Off the glass';
+  const airball = !touchedRim && !touchedBoard;
+  // Sudden death: the first miss ends the round like the buzzer does.
+  const sudden = game.daily?.twist.id === 'sudden' && !game.buzzer;
+  if (sudden) {
+    game.buzzer = true;
+    game.endReason = 'sudden';
+  }
+  const carryOn = () => {
+    if (sudden) sfx.buzzer();
+    settle(sudden ? 1 : 0.4);
+  };
+  if (airball && game.mode === 'play' && fanCamDue()) {
+    fanCamShown();
+    airballCut(b, wasOnFire, carryOn);
+    return;
+  }
+  const word = airball ? 'Airball' : touchedRim ? pick(RIM_WORDS) : 'Off the glass';
   const [x, y] = rimOnScreen();
   hud.popup(x, y, { word: wasOnFire ? 'Fire out' : word, kind: 'miss' });
   sfx.miss();
-  if (game.daily?.twist.id === 'sudden' && !game.buzzer) {
-    // Sudden death: the first miss ends the round like the buzzer does.
-    game.buzzer = true;
-    game.endReason = 'sudden';
-    sfx.buzzer();
-    settle(1);
-    return;
+  carryOn();
+}
+
+// The fan cam plays on the first airball of a browser session only, so it
+// stays a surprise rather than a toll on every airball. The in-memory flag
+// covers browsers that block storage.
+let fanCamPlayed = false;
+function fanCamDue() {
+  try {
+    return !fanCamPlayed && !sessionStorage.getItem('pixel-hoops:fan-cam');
+  } catch {
+    return !fanCamPlayed;
   }
-  settle(0.4);
+}
+function fanCamShown() {
+  fanCamPlayed = true;
+  try {
+    sessionStorage.setItem('pixel-hoops:fan-cam', '1');
+  } catch {
+    // Storage is blocked; the flag above still holds for this page.
+  }
+}
+
+// An airball cuts to the fan cam: the ball finds a fan in the front row,
+// and their popcorn. The clock stops until it cuts back.
+function airballCut(b, wasOnFire, carryOn) {
+  const i = balls.indexOf(b);
+  if (i >= 0) {
+    balls.splice(i, 1);
+    removeBall(b);
+  }
+  game.shot = null;
+  game.phase = 'cutscene';
+  hud.fanCam(true, 'Airball!');
+  cutscene.start({
+    onImpact(head) {
+      const [x, y] = onScreen(head.x - 0.12, head.y + 0.32, head.z);
+      hud.popup(x, y, { word: 'Bonk!', kind: 'bonk' });
+    },
+    onDone() {
+      hud.fanCam(false);
+      updateCamera(0); // back on the court before placing anything on screen
+      if (wasOnFire) {
+        const [x, y] = rimOnScreen();
+        hud.popup(x, y, { word: 'Fire out', kind: 'miss' });
+      }
+      carryOn();
+    },
+  });
 }
 
 function settle(delay) {
@@ -536,6 +611,8 @@ function updateClock(dt) {
     if (game.countdown <= -0.7) hud.countdown(null);
   }
   if (game.buzzer) return;
+  // The fan cam stops the clock.
+  if (cutscene.active) return;
 
   game.time -= dt;
   const secs = Math.ceil(game.time);
@@ -714,7 +791,8 @@ function resize() {
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
   const size = pixel.setSize(window.innerWidth, window.innerHeight, ratio);
   camera.aspect = size.x / size.y;
-  camera.fov = camera.aspect < 0.8 ? 66 : 58;
+  baseFov = camera.aspect < 0.8 ? 66 : 58;
+  camera.fov = cutscene.active ? cutscene.fov(camera.aspect) : baseFov;
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize);
@@ -731,6 +809,7 @@ function frame(now) {
   updateDemo(dt);
   updateBalls(dt);
   updatePhase(dt);
+  cutscene.update(dt, game.clock);
   updateCamera(dt);
   updateHeld(dt);
   updateAim();
@@ -818,6 +897,7 @@ syncMute();
 window.addEventListener('keydown', (e) => {
   if (e.target.closest?.('input, textarea')) return;
   if (e.key === 'm' || e.key === 'M') toggleMute();
+  if (cutscene.active && (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape')) cutscene.skip();
 });
 
 requestAnimationFrame(frame);
