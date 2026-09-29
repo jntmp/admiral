@@ -13,7 +13,7 @@ import { buildArena } from './arena.js';
 import { Sfx } from './audio.js';
 import { BoardUi } from './board.js';
 import { BALL_RADIUS, GAME, LEADERBOARD, PHYSICS, RIM, SHOT } from './config.js';
-import { dailyNumber, dailySpots, dayKey, makeCounts, twistFor } from './daily.js';
+import { dailyNumber, dailySpots, dayKey, formatWait, makeCounts, twistFor, untilNextDay } from './daily.js';
 import { AimDots, Particles } from './fx.js';
 import { buildHoop } from './hoop.js';
 import { Hud } from './hud.js';
@@ -500,6 +500,8 @@ function endGame() {
     title: game.endReason === 'sudden' ? 'Sudden death!' : 'Time!',
     mode: daily ? `Daily #${daily.number} · ${daily.twist.name}` : 'Classic · 60 seconds',
     practice,
+    // Replaying a daily is always practice once the official round is in.
+    again: daily ? 'Practice again' : 'Play again',
   });
   showShare(result);
   board.offer(result);
@@ -738,6 +740,12 @@ hud.showTitle(game.best);
 $('play').addEventListener('click', () => startGame('classic'));
 $('daily-play').addEventListener('click', () => startGame('daily'));
 $('again').addEventListener('click', () => startGame(game.lastMode ?? 'classic'));
+$('menu').addEventListener('click', () => {
+  game.mode = 'title';
+  game.phase = 'idle';
+  hud.showMenu(game.best);
+  refreshDaily();
+});
 
 // The results screen's share card. For a daily practice round it shares the
 // official result instead, since that's the one that counts.
@@ -770,8 +778,10 @@ board.onSaved = (result, rank) => {
 function refreshDaily() {
   const t = today();
   board.today = t;
-  hud.showDaily(t, store.get(dailyRecordKey(t.key), null));
+  hud.showDaily(t, store.get(dailyRecordKey(t.key), null), formatWait(untilNextDay()));
 }
+// Keeps the countdown current, and rolls the card over at midnight UTC.
+setInterval(refreshDaily, 30000);
 $('daily-share').addEventListener('click', () => {
   const t = today();
   const record = store.get(dailyRecordKey(t.key), null);
