@@ -33,7 +33,7 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 
 ### Daily challenge
 
-Everyone plays the same round each day: the date (UTC) picks the twist and seeds the shooting spots, so every player's nth shot is from the same place. Your first daily round of the day is the official one and goes on the daily leaderboard; later rounds that day are practice.
+Everyone plays the same round each day: the date (UTC) picks the twist and seeds the shooting spots, so every player's nth shot is from the same place. Your first daily round of the day is the official one and goes on the daily leaderboard; later rounds that day are practice. **Menu** on the results screen goes back to the title screen, where the daily card shows your official result and a countdown to the next daily.
 
 | Day | Twist |
 |---|---|

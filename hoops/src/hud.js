@@ -135,7 +135,7 @@ export class Hud {
 
   // The daily card on the title screen: today's twist, and your official
   // result once you've played it.
-  showDaily({ number, key, twist }, record) {
+  showDaily({ number, key, twist }, record, wait = '') {
     const date = new Date(`${key}T12:00:00Z`).toLocaleDateString(undefined, {
       day: 'numeric',
       month: 'short',
@@ -150,11 +150,22 @@ export class Hud {
       const rank = record.rank ? `, ${record.rank}` : '';
       done.textContent = `Today: ${record.score} pts, ${record.made}/${record.attempts} made${rank}`;
     }
+    const next = $('daily-next');
+    next.hidden = !record;
+    next.textContent = `Next daily in ${wait}`;
     $('daily-play').textContent = record ? 'Practice' : 'Play daily';
     $('daily-share').hidden = !record;
   }
 
-  showOver({ score, made, attempts, bestStreak, best, newBest, title = 'Time!', mode = '', practice = '' }) {
+  // Back from the results screen to the title screen.
+  showMenu(best) {
+    this.showTitle(best);
+    this.over.hidden = true;
+    this.title.hidden = false;
+    $('daily-play').focus({ preventScroll: true });
+  }
+
+  showOver({ score, made, attempts, bestStreak, best, newBest, title = 'Time!', mode = '', practice = '', again = 'Play again' }) {
     this.root.hidden = true;
     this.countdown(null);
     $('over-title').textContent = title;
@@ -163,6 +174,7 @@ export class Hud {
     note.hidden = !practice;
     note.textContent = practice;
     $('final-score').textContent = score;
+    $('again').textContent = again;
     $('stat-made').textContent = `${made}/${attempts}`;
     $('stat-pct').textContent = `${attempts ? Math.round((made / attempts) * 100) : 0}%`;
     $('stat-streak').textContent = bestStreak;

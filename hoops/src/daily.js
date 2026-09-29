@@ -31,6 +31,21 @@ export function dailyNumber(key) {
   return Math.round((Date.parse(key) - Date.parse(FIRST_DAY)) / DAY_MS) + 1;
 }
 
+// Milliseconds until the next daily unlocks (midnight UTC).
+export function untilNextDay(now = Date.now()) {
+  const d = new Date(now);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - now;
+}
+
+// "15h 04m", "42m", or "under a minute".
+export function formatWait(ms) {
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return 'under a minute';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+}
+
 export function twistFor(key) {
   return TWISTS[new Date(`${key}T00:00:00Z`).getUTCDay()];
 }

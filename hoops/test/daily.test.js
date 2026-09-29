@@ -5,10 +5,12 @@ import {
   dailyNumber,
   dailySpots,
   dayKey,
+  formatWait,
   makeCounts,
   shareText,
   twistFor,
   TWISTS,
+  untilNextDay,
 } from '../src/daily.js';
 import { isThreePointer } from '../src/shot.js';
 
@@ -17,6 +19,14 @@ test('the day is taken in UTC and numbered from the first daily', () => {
   assert.equal(dayKey(new Date('2026-09-30T00:00:00Z')), '2026-09-30');
   assert.equal(dailyNumber('2026-09-29'), 1);
   assert.equal(dailyNumber('2026-10-06'), 8);
+});
+
+test('the countdown runs to the next midnight UTC', () => {
+  assert.equal(untilNextDay(Date.parse('2026-09-29T08:56:00Z')), (15 * 60 + 4) * 60000);
+  assert.equal(untilNextDay(Date.parse('2026-09-29T23:59:30Z')), 30000);
+  assert.equal(formatWait((15 * 60 + 4) * 60000), '15h 04m');
+  assert.equal(formatWait(42 * 60000 + 5000), '42m');
+  assert.equal(formatWait(30000), 'under a minute');
 });
 
 test('each weekday has its own twist', () => {
