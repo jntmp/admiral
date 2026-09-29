@@ -205,6 +205,28 @@ export class Crowd {
     this.rand = rand;
   }
 
+  // Take a fan out of the instanced crowd so a hand-built one can sit in
+  // their place: the seat behind the hoop in this row nearest to x.
+  claimSeat(x, row) {
+    const y = (row + 1) * ROW_RISE;
+    let best = null;
+    for (const seat of this.seats) {
+      if (seat.facing !== 0 || Math.abs(seat.y - y) > 0.01) continue;
+      if (!best || Math.abs(seat.x - x) < Math.abs(best.x - x)) best = seat;
+    }
+    best.hidden = true;
+    return best;
+  }
+
+  // How far a fan is off their seat right now: a little idle sway, plus a
+  // hop when the crowd is hyped.
+  lift(seat, time) {
+    const idle = Math.sin(time * 2 + seat.phase) * 0.015;
+    const t = Math.max(0, this.cheerTime - seat.delay);
+    const hop = this.hype > 0 ? Math.abs(Math.sin(t * 9 * seat.jump)) * 0.28 * Math.min(1, this.hype) : 0;
+    return idle + hop;
+  }
+
   cheer(amount) {
     this.hype = Math.min(1.5, Math.max(this.hype, amount));
     for (const seat of this.seats) seat.delay = this.rand() * 0.35;
@@ -216,12 +238,9 @@ export class Crowd {
     this.cheerTime = (this.cheerTime ?? 10) + dt;
     const d = this.dummy;
     this.seats.forEach((seat, i) => {
-      const idle = Math.sin(time * 2 + seat.phase) * 0.015;
-      const t = Math.max(0, this.cheerTime - seat.delay);
-      const hop = this.hype > 0 ? Math.abs(Math.sin(t * 9 * seat.jump)) * 0.28 * Math.min(1, this.hype) : 0;
-      const lift = idle + hop;
+      const lift = this.lift(seat, time);
       d.rotation.set(0, seat.facing, 0);
-      d.scale.set(1, 1, 1);
+      d.scale.setScalar(seat.hidden ? 0 : 1);
       d.position.set(seat.x, seat.y + 0.28 + lift, seat.z);
       d.updateMatrix();
       this.bodies.setMatrixAt(i, d.matrix);

@@ -387,6 +387,96 @@ body {
   animation: embers 0.8s steps(6) 0.15s 2;
 }
 
+/* Airball fan cam: broadcast letterbox over the cutscene. */
+.fancam {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.fancam-bar {
+  min-height: max(56px, 11vh);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 calc(env(safe-area-inset-right, 0px) + var(--gutter)) 0 calc(env(safe-area-inset-left, 0px) + var(--gutter));
+  background: #000;
+}
+
+.fancam-top {
+  padding-top: env(safe-area-inset-top, 0px);
+  animation: bar-down 0.24s steps(4) both;
+}
+
+.fancam-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  animation: bar-up 0.24s steps(4) both;
+}
+
+.fancam-tag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--pixel);
+  font-size: 12px;
+  color: var(--cream);
+  text-transform: uppercase;
+}
+
+.rec {
+  width: 10px;
+  height: 10px;
+  background: var(--rim);
+  animation: blink 1s steps(1) infinite;
+}
+
+.fancam-caption {
+  font-family: var(--pixel);
+  font-size: clamp(16px, 4.6vw, 24px);
+  color: var(--amber);
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--ember);
+}
+
+.fancam-skip {
+  font-family: var(--terminal);
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cut-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: var(--cream);
+  opacity: 0;
+}
+
+.cut-flash.go {
+  animation: cut-flash 0.24s steps(3) forwards;
+}
+
+.popup.bonk {
+  rotate: -10deg;
+}
+
+.popup.bonk .popup-word {
+  font-size: clamp(24px, 8vw, 44px);
+  color: var(--amber);
+  text-shadow:
+    -3px 0 0 var(--ink),
+    0 -3px 0 var(--ink),
+    3px 0 0 var(--ink),
+    0 3px 0 var(--ink),
+    5px 5px 0 var(--ember);
+}
+
 .countdown {
   position: fixed;
   inset: 0;
@@ -1041,6 +1131,27 @@ body {
   }
 }
 
+@keyframes bar-down {
+  from {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes bar-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes cut-flash {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes swish-flash {
   50% {
     box-shadow: 0 0 0 3px var(--cream), 0 0 0 6px var(--ink), 8px 8px 0 6px rgb(0 0 0 / 0.4);
@@ -1114,6 +1225,11 @@ body {
   }
   .popup.make.swish::before,
   .popup.fire::before {
+    animation: none;
+  }
+  .cut-flash.go,
+  .rec,
+  .fancam-bar {
     animation: none;
   }
 }

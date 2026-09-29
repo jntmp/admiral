@@ -25,7 +25,9 @@ export class Particles {
     scene.add(this.mesh);
   }
 
-  spawn(pos, vel, { size = 0.06, life = 1, colour = '#ffffff', gravity = 9.8, drag = 1.5, spin = 8 } = {}) {
+  // floor is the height the particle comes to rest at: the court, or a row
+  // of seats for popcorn.
+  spawn(pos, vel, { size = 0.06, life = 1, colour = '#ffffff', gravity = 9.8, drag = 1.5, spin = 8, floor = 0.02 } = {}) {
     if (this.items.length >= this.capacity) this.items.shift();
     this.items.push({
       pos: pos.clone(),
@@ -38,6 +40,7 @@ export class Particles {
       colour,
       gravity,
       drag,
+      floor,
     });
   }
 
@@ -64,8 +67,8 @@ export class Particles {
       p.vel.y -= p.gravity * dt;
       p.vel.multiplyScalar(Math.max(0, 1 - p.drag * dt));
       p.pos.addScaledVector(p.vel, dt);
-      if (p.pos.y < 0.02) {
-        p.pos.y = 0.02;
+      if (p.pos.y < p.floor) {
+        p.pos.y = p.floor;
         p.vel.set(0, 0, 0);
         p.spin.set(0, 0, 0);
       }
