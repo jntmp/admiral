@@ -114,8 +114,8 @@ export function spotRange(makes) {
 
 // Pick the next place to shoot from. Keeps clear of the last spot so the
 // camera always has somewhere to go.
-export function pickSpot(makes, previous, random = Math.random) {
-  const { min, max, spread } = spotRange(makes);
+export function pickSpot(makes, previous, random = Math.random, range = spotRange(makes)) {
+  const { min, max, spread } = range;
   let best = null;
   for (let i = 0; i < 12; i++) {
     const distance = min + (max - min) * random();

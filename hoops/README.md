@@ -29,6 +29,21 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 - A shot in the air when the buzzer goes still counts.
 - **M** or the speaker button toggles sound. Your best score is kept in `localStorage`.
 - After a round, enter three initials (letters only, arcade style) to post your score to the **online leaderboard**, then see where you rank this week and all time. The leaderboard is also on the title screen.
+- **Share** your round as a Wordle-style card: one square per shot (🟨 swish, 🟧 make, ⬜ went in but didn't count, ⬛ miss), your score, your rank and a link. Phones get the share sheet; elsewhere it's copied to the clipboard.
+
+### Daily challenge
+
+Everyone plays the same round each day: the date (UTC) picks the twist and seeds the shooting spots, so every player's nth shot is from the same place. Your first daily round of the day is the official one and goes on the daily leaderboard; later rounds that day are practice.
+
+| Day | Twist |
+|---|---|
+| Monday | **Swish only**: touch the rim or glass and it doesn't count |
+| Tuesday | **Glass only**: only bank shots score |
+| Wednesday | **Downtown**: every shot is a three |
+| Thursday | **Blind**: no aim line, just the power gauge |
+| Friday | **Free throws**: every shot from the line |
+| Saturday | **Moving hoop**: it slides from the first shot |
+| Sunday | **Sudden death**: your first miss ends the round |
 
 ## How it's put together
 
@@ -46,6 +61,8 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 | `src/hud.js` | DOM overlay: score, clock, streak, power gauge, callouts, title and results screens |
 | `src/leaderboard.js` | Supabase REST client for reading top scores and submitting a round |
 | `src/board.js` | Initials form on the results screen and the leaderboard screen |
+| `src/daily.js` | Daily challenge: the day's twist, seeded shooting spots, scoring rules, share text |
+| `src/share.js` | Share card: squares on the results screen, share sheet or clipboard |
 | `supabase/migrations/` | The leaderboard's table, access rules and `submit_score` function |
 
 Every throw is aimed so the ball would drop into the rim at a fixed entry angle (46°), so a perfect swipe is a swish from any spot. Difficulty comes from how far a real swipe strays from perfect. Tune the feel in `src/config.js`: `SHOT.powerSensitivity` and `SHOT.aimSensitivity` set how forgiving swipes are, `RIM.radius` sets the size of the target, and `GAME` holds the round length and when the hoop starts moving.
@@ -60,5 +77,6 @@ The game runs in the browser, so a determined player can always send a fake scor
 - Check constraints reject anything a real round can't produce: initials must be exactly three capital letters, as on an arcade high-score table; there are at most 60 attempts, no more makes than attempts, and at most 8 points per make (a swished three, doubled on fire).
 - Each client can submit 5 scores a minute. Clients are tracked by a salted hash of their IP address, kept for an hour at most, in a schema the API doesn't expose.
 - Every round carries a random id. If a save never gets an answer (a dropped mobile connection, say), the game retries it up to twice, and the server returns the stored result for a round it already has instead of adding a second row.
+- Daily rounds go through `submit_daily()`, which only accepts today's challenge (UTC), with ten minutes' grace after midnight for a round that started the day before. They're ranked separately from classic rounds. "One official round a day" is kept in the browser, so it's an honour system.
 
 To run it against your own Supabase project, apply `supabase/migrations/*.sql` (with the Supabase CLI or the SQL editor), then put that project's URL and publishable key in `src/config.js`. On Supabase's free plan a project pauses after a week without traffic; the game shows the leaderboard as unreachable until you restore it from the dashboard.

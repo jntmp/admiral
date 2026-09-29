@@ -550,6 +550,165 @@ body {
   display: none;
 }
 
+.board-caption {
+  margin: -6px 0 0;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Daily challenge */
+
+.daily-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 14px 18px;
+  box-shadow: 0 0 0 3px var(--amber), 0 0 0 7px var(--ink);
+  background: rgba(255, 194, 61, 0.06);
+}
+
+.daily-eyebrow {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.daily-name {
+  margin: 0;
+  font-family: var(--pixel);
+  font-size: clamp(13px, 3.6vw, 16px);
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--amber);
+  text-wrap: balance;
+}
+
+.daily-rule,
+.daily-done {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 21px;
+  line-height: 1.1;
+  color: var(--cream);
+}
+
+.daily-done {
+  color: var(--amber);
+}
+
+.daily-card .actions {
+  margin-top: 6px;
+  align-items: center;
+}
+
+.twist-tag {
+  font-family: var(--pixel);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cream);
+  background: var(--teal);
+  padding: 6px 8px 5px;
+}
+
+.result-mode {
+  margin: -6px 0 0;
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.practice-note {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.1;
+  color: var(--muted);
+}
+
+/* Share card: one pixel square per shot, like the text that gets shared. */
+
+.share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px 20px;
+}
+
+.share-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 12px);
+  gap: 3px;
+}
+
+.share-grid .sq {
+  width: 12px;
+  height: 12px;
+}
+
+.sq.swish {
+  background: var(--amber);
+}
+
+.sq.make {
+  background: #e8742a;
+}
+
+.sq.void {
+  background: var(--cream);
+}
+
+.sq.miss {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 2px rgba(138, 147, 184, 0.45);
+}
+
+.share-status {
+  margin: 0;
+  font-size: 19px;
+  color: var(--cream);
+}
+
+.share-status:empty {
+  display: none;
+}
+
+.share-fallback {
+  width: 100%;
+  padding: 8px 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--cream);
+  background: var(--ink);
+  border: 0;
+  box-shadow: 0 0 0 2px var(--muted);
+  resize: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.popup-detail {
+  max-width: min(80vw, 420px);
+  font-family: var(--terminal);
+  font-size: 22px;
+  line-height: 1.1;
+  white-space: normal;
+  text-align: center;
+  color: var(--cream);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+.popup.intro {
+  animation-duration: 2.6s;
+}
+
 .btn:active {
   transform: translate(4px, 4px);
   box-shadow: 0 0 0 4px var(--ink), 2px 2px 0 4px var(--ember);

@@ -44,11 +44,38 @@ test('top scores: best first, ties to the earliest, week limited to 7 days', asy
   assert.equal(all.searchParams.get('order'), 'score.desc,created_at.asc');
   assert.equal(all.searchParams.get('limit'), '10');
   assert.equal(all.searchParams.get('created_at'), null);
+  assert.equal(all.searchParams.get('challenge'), 'is.null', 'classic boards leave out daily rounds');
   assert.equal(calls[0].init.headers.apikey, 'sb_publishable_test');
 
   const now = Date.parse('2026-09-27T12:00:00Z');
   await board.top('week', 10, now);
   assert.equal(new URL(calls[1].url).searchParams.get('created_at'), 'gte.2026-09-20T12:00:00.000Z');
+});
+
+test("the daily board is today's challenge only", async () => {
+  const { fetch, calls } = fakeFetch({ body: [] });
+  const board = new Leaderboard(config, fetch);
+  await board.top('daily', 10, Date.parse('2026-09-29T23:30:00Z'));
+  const url = new URL(calls[0].url);
+  assert.equal(url.searchParams.get('challenge'), 'eq.2026-09-29');
+  assert.equal(url.searchParams.get('created_at'), null);
+});
+
+test('daily rounds post to submit_daily with their day and get a rank among that day', async () => {
+  const { fetch, calls } = fakeFetch({ body: [{ rank_day: 3, players: 17 }] });
+  const board = new Leaderboard(config, fetch);
+  const result = await board.submitDaily({ ...entry, day: '2026-09-29' });
+  assert.deepEqual(result, { rankDay: 3, players: 17 });
+  assert.equal(calls[0].url, 'https://example.supabase.co/rest/v1/rpc/submit_daily');
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    p_round: entry.round,
+    p_day: '2026-09-29',
+    p_initials: 'ABC',
+    p_score: 42,
+    p_made: 9,
+    p_attempts: 14,
+    p_best_streak: 5,
+  });
 });
 
 test('submitting posts to submit_score and returns both ranks', async () => {
