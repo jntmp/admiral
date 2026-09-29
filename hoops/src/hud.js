@@ -119,7 +119,15 @@ export class Hud {
       el.append(d);
     }
     this.popups.append(el);
-    el.addEventListener('animationend', () => el.remove());
+    // Keep it on screen, since the hoop slides and the camera moves. Make
+    // callouts hang from their anchor, so they also stay below the top bar.
+    const half = el.offsetWidth / 2 + 8;
+    el.style.left = `${Math.min(Math.max(x, half), window.innerWidth - half)}px`;
+    if (kind.includes('make')) el.style.top = `${Math.max(y, el.offsetHeight + 72)}px`;
+    // The swish sparkle burst ends first; wait for the callout itself.
+    el.addEventListener('animationend', (e) => {
+      if (e.target === el && e.animationName !== 'sparkle') el.remove();
+    });
     // Safety net in case animations are disabled.
     setTimeout(() => el.remove(), 2500);
   }

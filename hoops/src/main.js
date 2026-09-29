@@ -12,7 +12,7 @@ import {
 import { buildArena } from './arena.js';
 import { Sfx } from './audio.js';
 import { BoardUi } from './board.js';
-import { BALL_RADIUS, GAME, LEADERBOARD, PHYSICS, RIM, SHOT } from './config.js';
+import { BALL_RADIUS, BOARD, GAME, LEADERBOARD, PHYSICS, RIM, SHOT } from './config.js';
 import { dailyNumber, dailySpots, dayKey, formatWait, makeCounts, twistFor, untilNextDay } from './daily.js';
 import { AimDots, Particles } from './fx.js';
 import { buildHoop } from './hoop.js';
@@ -309,15 +309,26 @@ function throwBall(shot) {
 }
 
 const screenPos = new Vector3();
-function rimOnScreen(lift = 0.55) {
-  screenPos.set(hoop.x, RIM.y + lift, 0).project(camera);
+function onScreen(x, y, z) {
+  screenPos.set(x, y, z).project(camera);
   return [(screenPos.x * 0.5 + 0.5) * window.innerWidth, (-screenPos.y * 0.5 + 0.5) * window.innerHeight];
 }
 
+function rimOnScreen(lift = 0.55) {
+  return onScreen(hoop.x, RIM.y + lift, 0);
+}
+
+// Just above the backboard: make callouts sit here, clear of the rim, the
+// net and the confetti.
+function boardTopOnScreen() {
+  return onScreen(hoop.x, BOARD.bottom + BOARD.height + 0.08, BOARD.front);
+}
+
+// In-play banners go below the net, out of the way of the make callout.
 function banner(word, delay = 0) {
   setTimeout(() => {
     if (game.mode !== 'play') return;
-    hud.popup(window.innerWidth / 2, window.innerHeight * 0.24, { word, kind: 'banner' });
+    hud.popup(window.innerWidth / 2, window.innerHeight * 0.62, { word, kind: 'banner' });
   }, delay);
 }
 
@@ -341,8 +352,8 @@ function onMake(b, swish) {
   else if (swish) word = 'Swish!';
   else if (bank) word = 'Bank!';
   else if (b.three) word = 'From downtown!';
-  const [x, y] = rimOnScreen();
-  hud.popup(x, y, { points, word });
+  const [x, y] = boardTopOnScreen();
+  hud.popup(x, y, { points, word, kind: swish ? 'make swish' : 'make' });
 
   if (game.streak === GAME.fireStreak) {
     banner("You're on fire!", 450);
