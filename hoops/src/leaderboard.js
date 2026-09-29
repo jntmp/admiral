@@ -74,10 +74,16 @@ export class Leaderboard {
     return res.json();
   }
 
-  // Top scores, best first; ties go to whoever set them first.
+  // Top scores, best first; ties go to whoever set them first. 'daily' is
+  // today's challenge (UTC); 'week' and 'all' are classic rounds only.
   top(range = 'all', limit = 10, now = Date.now()) {
     let query = `scores?select=initials,score,made,attempts,created_at&order=score.desc,created_at.asc&limit=${limit}`;
-    if (range === 'week') query += `&created_at=gte.${encodeURIComponent(new Date(now - WEEK_MS).toISOString())}`;
+    if (range === 'daily') {
+      query += `&challenge=eq.${new Date(now).toISOString().slice(0, 10)}`;
+    } else {
+      query += '&challenge=is.null';
+      if (range === 'week') query += `&created_at=gte.${encodeURIComponent(new Date(now - WEEK_MS).toISOString())}`;
+    }
     return this.request(query);
   }
 
@@ -96,5 +102,23 @@ export class Leaderboard {
     });
     const row = Array.isArray(rows) ? rows[0] : rows;
     return { rankAll: Number(row.rank_all), rankWeek: Number(row.rank_week) };
+  }
+
+  // Saves a daily-challenge round; `day` is the challenge's UTC date.
+  async submitDaily({ round, day, initials, score, made, attempts, bestStreak }) {
+    const rows = await this.request('rpc/submit_daily', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_round: round,
+        p_day: day,
+        p_initials: initials,
+        p_score: score,
+        p_made: made,
+        p_attempts: attempts,
+        p_best_streak: bestStreak,
+      }),
+    });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return { rankDay: Number(row.rank_day), players: Number(row.players) };
   }
 }

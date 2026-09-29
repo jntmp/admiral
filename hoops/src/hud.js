@@ -30,6 +30,7 @@ export class Hud {
     this.streak = $('streak');
     this.pips = [...this.streak.querySelectorAll('.pip')];
     this.shotTag = $('shot-tag');
+    this.twistTag = $('twist-tag');
     this.hintEl = $('hint');
     this.popups = $('popups');
     this.countdownEl = $('countdown');
@@ -88,7 +89,13 @@ export class Hud {
     this.hintEl.hidden = !show;
   }
 
-  popup(x, y, { points = null, word = '', kind = '' } = {}) {
+  // The daily twist's name under the shot tag; null hides it.
+  setTwist(text) {
+    this.twistTag.hidden = !text;
+    this.twistTag.textContent = text ?? '';
+  }
+
+  popup(x, y, { points = null, word = '', detail = '', kind = '' } = {}) {
     const el = document.createElement('div');
     el.className = `popup ${kind}`;
     el.style.left = `${x}px`;
@@ -105,6 +112,12 @@ export class Hud {
       w.textContent = word;
       el.append(w);
     }
+    if (detail) {
+      const d = document.createElement('span');
+      d.className = 'popup-detail';
+      d.textContent = detail;
+      el.append(d);
+    }
     this.popups.append(el);
     el.addEventListener('animationend', () => el.remove());
     // Safety net in case animations are disabled.
@@ -120,14 +133,42 @@ export class Hud {
     $('best-title').textContent = best;
   }
 
-  showOver({ score, made, attempts, bestStreak, best, newBest }) {
+  // The daily card on the title screen: today's twist, and your official
+  // result once you've played it.
+  showDaily({ number, key, twist }, record) {
+    const date = new Date(`${key}T12:00:00Z`).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    });
+    $('daily-eyebrow').textContent = `Daily #${number} · ${date}`;
+    $('daily-name').textContent = twist.name;
+    $('daily-rule').textContent = twist.rule;
+    const done = $('daily-done');
+    done.hidden = !record;
+    if (record) {
+      const rank = record.rank ? `, ${record.rank}` : '';
+      done.textContent = `Today: ${record.score} pts, ${record.made}/${record.attempts} made${rank}`;
+    }
+    $('daily-play').textContent = record ? 'Practice' : 'Play daily';
+    $('daily-share').hidden = !record;
+  }
+
+  showOver({ score, made, attempts, bestStreak, best, newBest, title = 'Time!', mode = '', practice = '' }) {
     this.root.hidden = true;
     this.countdown(null);
+    $('over-title').textContent = title;
+    $('result-mode').textContent = mode;
+    const note = $('practice-note');
+    note.hidden = !practice;
+    note.textContent = practice;
     $('final-score').textContent = score;
     $('stat-made').textContent = `${made}/${attempts}`;
     $('stat-pct').textContent = `${attempts ? Math.round((made / attempts) * 100) : 0}%`;
     $('stat-streak').textContent = bestStreak;
     $('stat-best').textContent = best;
+    // The best score is a classic-round record; daily rounds don't touch it.
+    $('stat-best').parentElement.hidden = Boolean(mode) && !mode.startsWith('Classic');
     $('new-best').hidden = !newBest;
     this.over.hidden = false;
     $('again').focus({ preventScroll: true });

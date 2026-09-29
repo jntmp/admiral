@@ -14,6 +14,7 @@ function saveError(err) {
 }
 
 const EMPTY = {
+  daily: "No one has played today's daily yet. Set the first score.",
   week: 'No scores this week yet. Set the first one.',
   all: 'No scores yet. Set the first one.',
 };
@@ -32,7 +33,10 @@ export class BoardUi {
     this.input = $('initials');
     this.submitButton = this.form.querySelector('button');
     this.submitStatus = $('submit-status');
+    this.caption = $('board-caption');
     this.range = 'week';
+    this.today = null;
+    this.onSaved = () => {};
     this.result = null;
     this.mine = null;
     this.request = 0;
@@ -55,11 +59,14 @@ export class BoardUi {
     });
   }
 
-  // A round just ended: offer to post it.
+  // A round just ended: offer to post it. Daily practice rounds can't be
+  // posted; only the first daily round of the day is official.
   offer(result) {
     this.result = result;
     this.mine = null;
-    this.form.hidden = !this.leaderboard.enabled || result.score <= 0;
+    this.range = result.daily ? 'daily' : 'week';
+    this.form.hidden =
+      !this.leaderboard.enabled || result.score <= 0 || (result.daily && !result.official);
     this.input.disabled = false;
     this.submitButton.disabled = false;
     this.input.value = cleanInitials(String(this.store.get('initials', '')));
@@ -79,14 +86,25 @@ export class BoardUi {
     this.submitButton.disabled = true;
     this.submitStatus.textContent = 'Saving…';
     try {
-      const { rankWeek, rankAll } = await this.leaderboard.submit({ initials, ...result });
+      let rank;
+      let message;
+      if (result.daily) {
+        const { rankDay, players } = await this.leaderboard.submitDaily({ initials, day: result.daily.key, ...result });
+        rank = `#${rankDay} of ${players}`;
+        message = `Saved: ${rank} today.`;
+      } else {
+        const { rankWeek, rankAll } = await this.leaderboard.submit({ initials, ...result });
+        rank = `#${rankWeek} this week`;
+        message = `Saved: #${rankWeek} this week, #${rankAll} all time.`;
+      }
       this.store.set('initials', initials);
       // A newer round took over the form while this one was saving.
       if (this.result !== result) return;
       this.mine = { initials, score: result.score };
       this.result = null;
       this.input.disabled = true;
-      this.submitStatus.textContent = `Saved: #${rankWeek} this week, #${rankAll} all time.`;
+      this.submitStatus.textContent = message;
+      this.onSaved(result, rank);
     } catch (err) {
       if (this.result !== result) return;
       this.submitButton.disabled = false;
@@ -114,6 +132,10 @@ export class BoardUi {
   async show(range) {
     this.range = range;
     this.tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.range === range)));
+    this.caption.textContent =
+      range === 'daily' && this.today
+        ? `Daily #${this.today.number} · ${this.today.twist.name}`
+        : 'Classic 60-second rounds';
     const request = ++this.request;
     this.list.replaceChildren();
     this.status.textContent = 'Loading…';

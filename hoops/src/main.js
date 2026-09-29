@@ -13,12 +13,14 @@ import { buildArena } from './arena.js';
 import { Sfx } from './audio.js';
 import { BoardUi } from './board.js';
 import { BALL_RADIUS, GAME, LEADERBOARD, PHYSICS, RIM, SHOT } from './config.js';
+import { dailyNumber, dailySpots, dayKey, makeCounts, twistFor } from './daily.js';
 import { AimDots, Particles } from './fx.js';
 import { buildHoop } from './hoop.js';
 import { Hud } from './hud.js';
 import { Leaderboard, newRoundId } from './leaderboard.js';
 import { Ball, createHoopState, stepBall } from './physics.js';
 import { PixelRenderer } from './pixel.js';
+import { renderGrid, resultText, shareOrCopy } from './share.js';
 import {
   aimedVelocity,
   hoopMotion,
@@ -251,7 +253,7 @@ canvas.addEventListener('pointercancel', (e) => e.pointerId === pointer.id && en
 const previewVel = new Vector3();
 function updateAim() {
   const shot = game.phase === 'aiming' ? currentSwipe() : null;
-  if (!shot) {
+  if (!shot || game.daily?.twist.id === 'blind') {
     aim.hide();
     return;
   }
@@ -266,7 +268,12 @@ function onFire() {
 }
 
 function nextSpot(first = false) {
-  game.spot.copy(pickSpot(game.makes, first ? null : game.spot));
+  if (game.daily) {
+    const { spots } = game.daily;
+    game.spot.copy(spots[Math.min(game.attempts, spots.length - 1)]);
+  } else {
+    game.spot.copy(pickSpot(game.makes, first ? null : game.spot));
+  }
   game.three = isThreePointer(game.spot.x, game.spot.z);
   poseFor(game.spot, tmpPos, tmpLook);
   tweenCamera(tmpPos, tmpLook, first ? 1.2 : 0.6);
@@ -316,6 +323,11 @@ function banner(word, delay = 0) {
 
 function onMake(b, swish) {
   b.resolved = true;
+  if (!makeCounts(game.daily?.twist, { swish, bank: b.body.touchedBoard })) {
+    onVoid();
+    return;
+  }
+  game.shots.push(swish ? 'swish' : 'make');
   const multiplier = onFire() ? 2 : 1;
   const bank = b.body.touchedBoard && !b.body.touchedRim;
   const points = ((b.three ? 3 : 2) + (swish ? 1 : 0)) * multiplier;
@@ -346,15 +358,36 @@ function onMake(b, swish) {
   settle(0.6);
 }
 
+// It went in, but today's twist says it doesn't count.
+function onVoid() {
+  game.streak = 0;
+  game.shots.push('void');
+  const word = game.daily.twist.id === 'swish' ? 'Not a swish' : 'Not off the glass';
+  const [x, y] = rimOnScreen();
+  hud.popup(x, y, { word, kind: 'miss' });
+  sfx.swish();
+  sfx.miss();
+  settle(0.5);
+}
+
 function onMiss(b) {
   b.resolved = true;
   const wasOnFire = onFire();
   game.streak = 0;
+  game.shots.push('miss');
   const { touchedRim, touchedBoard } = b.body;
   const word = !touchedRim && !touchedBoard ? 'Airball' : touchedRim ? pick(RIM_WORDS) : 'Off the glass';
   const [x, y] = rimOnScreen();
   hud.popup(x, y, { word: wasOnFire ? 'Fire out' : word, kind: 'miss' });
   sfx.miss();
+  if (game.daily?.twist.id === 'sudden' && !game.buzzer) {
+    // Sudden death: the first miss ends the round like the buzzer does.
+    game.buzzer = true;
+    game.endReason = 'sudden';
+    sfx.buzzer();
+    settle(1);
+    return;
+  }
   settle(0.4);
 }
 
@@ -374,8 +407,22 @@ function checkShot() {
 
 // ---------------------------------------------------------------- flow
 
-function startGame() {
+function today() {
+  const key = dayKey();
+  return { key, number: dailyNumber(key), twist: twistFor(key) };
+}
+
+const dailyRecordKey = (key) => `daily:${key}`;
+
+// mode is 'classic' or 'daily'. The first daily round of the day is the
+// official one; later ones that day are practice.
+function startGame(mode = 'classic') {
   sfx.unlock();
+  let daily = null;
+  if (mode === 'daily') {
+    const t = today();
+    daily = { ...t, spots: dailySpots(t.key, t.twist), official: !store.get(dailyRecordKey(t.key), null) };
+  }
   if (held) removeBall(held);
   held = null;
   // Clear the demo balls off the court.
@@ -393,9 +440,21 @@ function startGame() {
     lastTick: 4,
     shot: null,
     round: newRoundId(),
+    daily,
+    lastMode: mode,
+    shots: [],
+    endReason: null,
   });
   hud.showPlay();
   hud.hint(true);
+  hud.setTwist(daily ? `${daily.official ? 'Daily' : 'Practice'} · ${daily.twist.short}` : null);
+  if (daily) {
+    hud.popup(window.innerWidth / 2, window.innerHeight * 0.26, {
+      word: daily.twist.name,
+      detail: daily.twist.rule,
+      kind: 'banner intro',
+    });
+  }
   sfx.tick();
   nextSpot(true);
 }
@@ -406,10 +465,30 @@ function endGame() {
   if (held) removeBall(held);
   held = null;
   aim.hide();
-  const newBest = game.score > game.best;
+  const { daily } = game;
+  // Daily rounds play by different rules, so only classic rounds set a best.
+  const newBest = !daily && game.score > game.best;
   if (newBest) {
     game.best = game.score;
     store.set('best', game.best);
+  }
+  const result = {
+    round: game.round,
+    score: game.score,
+    made: game.makes,
+    attempts: game.attempts,
+    bestStreak: game.bestStreak,
+    shots: game.shots.slice(),
+    daily: daily && { key: daily.key, number: daily.number, twist: daily.twist },
+    official: Boolean(daily?.official),
+  };
+  let practice = '';
+  if (daily?.official) {
+    const { score, made, attempts, bestStreak, shots } = result;
+    store.set(dailyRecordKey(daily.key), { score, made, attempts, bestStreak, shots });
+  } else if (daily) {
+    const record = store.get(dailyRecordKey(daily.key), null);
+    practice = `Practice round. Your official score today is ${record?.score ?? 0}.`;
   }
   hud.showOver({
     score: game.score,
@@ -418,14 +497,13 @@ function endGame() {
     bestStreak: game.bestStreak,
     best: game.best,
     newBest,
+    title: game.endReason === 'sudden' ? 'Sudden death!' : 'Time!',
+    mode: daily ? `Daily #${daily.number} · ${daily.twist.name}` : 'Classic · 60 seconds',
+    practice,
   });
-  board.offer({
-    round: game.round,
-    score: game.score,
-    made: game.makes,
-    attempts: game.attempts,
-    bestStreak: game.bestStreak,
-  });
+  showShare(result);
+  board.offer(result);
+  refreshDaily();
   crowd.cheer(newBest ? 1.5 : 0.6);
 }
 
@@ -527,7 +605,11 @@ function handleEvent(e) {
 
 function updateHoop(dt) {
   const playing = game.mode === 'play' || game.mode === 'countdown';
-  const [amp, speed] = playing ? hoopMotion(game.makes) : [0, 0];
+  let [amp, speed] = playing ? hoopMotion(game.makes) : [0, 0];
+  if (playing && game.daily?.twist.id === 'moving') {
+    amp = Math.max(amp, 0.9);
+    speed = Math.max(speed, 1.1);
+  }
   game.hoopAmp += (amp - game.hoopAmp) * Math.min(1, dt * 1.2);
   game.hoopPhase += speed * dt;
   const x = game.hoopAmp * Math.sin(game.hoopPhase);
@@ -650,9 +732,53 @@ function frame(now) {
 
 // ---------------------------------------------------------------- ui
 
+const $ = (id) => document.getElementById(id);
+
 hud.showTitle(game.best);
-document.getElementById('play').addEventListener('click', startGame);
-document.getElementById('again').addEventListener('click', startGame);
+$('play').addEventListener('click', () => startGame('classic'));
+$('daily-play').addEventListener('click', () => startGame('daily'));
+$('again').addEventListener('click', () => startGame(game.lastMode ?? 'classic'));
+
+// The results screen's share card. For a daily practice round it shares the
+// official result instead, since that's the one that counts.
+let shared = null;
+function showShare(result) {
+  shared = { result, rank: null };
+  if (result.daily && !result.official) {
+    const record = store.get(dailyRecordKey(result.daily.key), null);
+    if (record) shared = { result: { ...record, daily: result.daily }, rank: record.rank ?? null };
+  }
+  renderGrid($('share-grid'), shared.result.shots ?? []);
+  $('share-status').textContent = '';
+  $('share-text').hidden = true;
+}
+$('share-button').addEventListener('click', () => {
+  if (shared) shareOrCopy(resultText(shared.result, shared.rank), $('share-status'), $('share-text'));
+});
+
+// Keep the rank with the result once the leaderboard has placed it.
+board.onSaved = (result, rank) => {
+  if (shared?.result === result) shared.rank = rank;
+  if (result.daily && result.official) {
+    const key = dailyRecordKey(result.daily.key);
+    const record = store.get(key, null);
+    if (record) store.set(key, { ...record, rank });
+    refreshDaily();
+  }
+};
+
+function refreshDaily() {
+  const t = today();
+  board.today = t;
+  hud.showDaily(t, store.get(dailyRecordKey(t.key), null));
+}
+$('daily-share').addEventListener('click', () => {
+  const t = today();
+  const record = store.get(dailyRecordKey(t.key), null);
+  if (!record) return;
+  shareOrCopy(resultText({ ...record, daily: t }, record.rank), $('daily-share-status'), $('daily-share-text'));
+});
+refreshDaily();
 
 const muteButton = document.getElementById('mute');
 function syncMute() {
@@ -669,7 +795,7 @@ muteButton.addEventListener('click', toggleMute);
 syncMute();
 
 window.addEventListener('keydown', (e) => {
-  if (e.target.closest?.('input')) return;
+  if (e.target.closest?.('input, textarea')) return;
   if (e.key === 'm' || e.key === 'M') toggleMute();
 });
 
