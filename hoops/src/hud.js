@@ -1,6 +1,10 @@
 // Thin wrapper over the DOM overlay: the 3D scene never touches the page.
 const $ = (id) => document.getElementById(id);
 
+// Side effects on a callout (sparkles, embers, a flashing ring) that end
+// before the callout itself does.
+const EFFECTS = new Set(['sparkle', 'embers', 'swish-flash', 'fire-flash']);
+
 // Gauge segments shade from cream at the bottom through amber to rim red.
 const GAUGE_STOPS = [
   [244, 236, 214],
@@ -124,12 +128,18 @@ export class Hud {
     const half = el.offsetWidth / 2 + 8;
     el.style.left = `${Math.min(Math.max(x, half), window.innerWidth - half)}px`;
     if (kind.includes('make')) el.style.top = `${Math.max(y, el.offsetHeight + 72)}px`;
-    // The swish sparkle burst ends first; wait for the callout itself.
     el.addEventListener('animationend', (e) => {
-      if (e.target === el && e.animationName !== 'sparkle') el.remove();
+      if (e.target === el && !EFFECTS.has(e.animationName)) el.remove();
     });
     // Safety net in case animations are disabled.
     setTimeout(() => el.remove(), 2500);
+  }
+
+  // "You're on fire!" rises from the streak meter at the bottom of the
+  // screen, where the player's eyes already are.
+  fireBanner() {
+    const meter = this.streak.getBoundingClientRect();
+    this.popup(window.innerWidth / 2, meter.top - 14, { word: "You're on fire!", kind: 'fire' });
   }
 
   countdown(text) {
