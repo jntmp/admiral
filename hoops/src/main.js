@@ -417,15 +417,36 @@ function onMiss(b) {
     if (sudden) sfx.buzzer();
     settle(sudden ? 1 : 0.4);
   };
-  if (airball && game.mode === 'play') {
+  if (airball && game.mode === 'play' && fanCamDue()) {
+    fanCamShown();
     airballCut(b, wasOnFire, carryOn);
     return;
   }
-  const word = touchedRim ? pick(RIM_WORDS) : 'Off the glass';
+  const word = airball ? 'Airball' : touchedRim ? pick(RIM_WORDS) : 'Off the glass';
   const [x, y] = rimOnScreen();
   hud.popup(x, y, { word: wasOnFire ? 'Fire out' : word, kind: 'miss' });
   sfx.miss();
   carryOn();
+}
+
+// The fan cam plays on the first airball of a browser session only, so it
+// stays a surprise rather than a toll on every airball. The in-memory flag
+// covers browsers that block storage.
+let fanCamPlayed = false;
+function fanCamDue() {
+  try {
+    return !fanCamPlayed && !sessionStorage.getItem('pixel-hoops:fan-cam');
+  } catch {
+    return !fanCamPlayed;
+  }
+}
+function fanCamShown() {
+  fanCamPlayed = true;
+  try {
+    sessionStorage.setItem('pixel-hoops:fan-cam', '1');
+  } catch {
+    // Storage is blocked; the flag above still holds for this page.
+  }
 }
 
 // An airball cuts to the fan cam: the ball finds a fan in the front row,
