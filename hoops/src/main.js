@@ -356,7 +356,7 @@ function onMake(b, swish) {
   hud.popup(x, y, { points, word, kind: swish ? 'make swish' : 'make' });
 
   if (game.streak === GAME.fireStreak) {
-    banner("You're on fire!", 450);
+    setTimeout(() => game.mode === 'play' && hud.fireBanner(), 450);
     sfx.fire();
   }
   if (game.makes === GAME.movingHoopAt) banner('Hoop on the move!', 900);
