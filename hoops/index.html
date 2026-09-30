@@ -62,12 +62,22 @@
     <section id="title" class="screen">
       <div class="panel">
         <h1 class="logo">Pixel<br />Hoops</h1>
-        <p class="lede">60 seconds on the clock. Drag up and let go to shoot. Sink as many as you can.</p>
-        <ul class="rules">
-          <li><b>2</b> inside the arc, <b>3</b> from downtown</li>
-          <li><b>+1</b> for a swish, nothing but net</li>
-          <li><b>x2</b> once you hit three in a row</li>
-        </ul>
+        <p class="lede">60 seconds. Drag up and let go to shoot.</p>
+        <nav class="menu" aria-label="Main menu">
+          <button id="play" class="btn" type="button">Play</button>
+          <button id="daily-open" class="btn btn-ghost btn-daily" type="button">
+            Daily challenge
+            <span id="daily-sub" class="btn-sub"></span>
+          </button>
+          <button id="board-from-title" class="btn btn-ghost" type="button" data-board>Leaderboard</button>
+        </nav>
+        <p class="best-line">Best <span id="best-title">0</span></p>
+      </div>
+    </section>
+
+    <section id="daily" class="screen" hidden>
+      <div class="panel">
+        <h2 class="board-title">Daily challenge</h2>
         <div class="daily-card">
           <p id="daily-eyebrow" class="daily-eyebrow">Daily</p>
           <p id="daily-name" class="daily-name">Today's twist</p>
@@ -81,23 +91,28 @@
           <p id="daily-share-status" class="share-status" aria-live="polite"></p>
           <textarea id="daily-share-text" class="share-fallback" rows="5" readonly hidden aria-label="Result to copy"></textarea>
         </div>
+        <p class="daily-how">
+          Everyone gets the same shots today. Your first round goes on the daily board; after that it's practice.
+        </p>
+        <p id="daily-tomorrow" class="daily-next"></p>
         <div class="actions">
-          <button id="play" class="btn btn-ghost" type="button">Classic</button>
-          <button id="board-from-title" class="btn btn-ghost" type="button" data-board>Leaderboard</button>
+          <button id="board-from-daily" class="btn btn-ghost btn-small" type="button" data-board="daily">Today's board</button>
+          <button id="daily-back" class="btn btn-ghost btn-small" type="button">Back</button>
         </div>
-        <p class="best-line">Classic best <span id="best-title">0</span></p>
       </div>
     </section>
 
     <section id="over" class="screen" hidden>
-      <div class="panel">
+      <div class="panel panel-compact">
         <h2 id="over-title" class="over-title">Time!</h2>
         <p id="result-mode" class="result-mode"></p>
-        <p class="final"><span id="final-score">0</span><span class="final-unit">pts</span></p>
-        <p id="new-best" class="new-best" hidden>New best!</p>
+        <div class="score-row">
+          <p class="final"><span id="final-score">0</span><span class="final-unit">pts</span></p>
+          <p id="new-best" class="new-best" hidden>New best!</p>
+        </div>
         <dl class="stats">
           <div><dt>Made</dt><dd id="stat-made">0/0</dd></div>
-          <div><dt>Accuracy</dt><dd id="stat-pct">0%</dd></div>
+          <div><dt title="Accuracy">Acc</dt><dd id="stat-pct">0%</dd></div>
           <div><dt>Streak</dt><dd id="stat-streak">0</dd></div>
           <div><dt>Best</dt><dd id="stat-best">0</dd></div>
         </dl>
@@ -109,8 +124,8 @@
         <p id="share-status" class="share-status" aria-live="polite"></p>
         <textarea id="share-text" class="share-fallback" rows="5" readonly hidden aria-label="Result to copy"></textarea>
         <form id="submit-form" class="submit-form" hidden>
-          <label for="initials">Enter your initials</label>
           <div class="submit-row">
+            <label for="initials">Save as</label>
             <input
               id="initials"
               name="initials"
@@ -124,10 +139,12 @@
           </div>
           <p id="submit-status" class="submit-status" aria-live="polite"></p>
         </form>
-        <div class="actions">
+        <div class="actions actions-stack">
           <button id="again" class="btn" type="button">Play again</button>
-          <button id="menu" class="btn btn-ghost" type="button">Menu</button>
-          <button id="board-from-over" class="btn btn-ghost" type="button" data-board>Leaderboard</button>
+          <div class="actions-row">
+            <button id="menu" class="btn btn-ghost btn-small" type="button">Menu</button>
+            <button id="board-from-over" class="btn btn-ghost btn-small" type="button" data-board>Leaderboard</button>
+          </div>
         </div>
       </div>
     </section>

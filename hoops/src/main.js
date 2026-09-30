@@ -829,6 +829,8 @@ const $ = (id) => document.getElementById(id);
 hud.showTitle(game.best);
 $('play').addEventListener('click', () => startGame('classic'));
 $('daily-play').addEventListener('click', () => startGame('daily'));
+$('daily-open').addEventListener('click', () => hud.openDaily());
+$('daily-back').addEventListener('click', () => hud.closeDaily());
 $('again').addEventListener('click', () => startGame(game.lastMode ?? 'classic'));
 $('menu').addEventListener('click', () => {
   game.mode = 'title';
@@ -868,7 +870,8 @@ board.onSaved = (result, rank) => {
 function refreshDaily() {
   const t = today();
   board.today = t;
-  hud.showDaily(t, store.get(dailyRecordKey(t.key), null), formatWait(untilNextDay()));
+  const tomorrow = twistFor(dayKey(new Date(Date.now() + untilNextDay() + 60000)));
+  hud.showDaily(t, store.get(dailyRecordKey(t.key), null), formatWait(untilNextDay()), tomorrow.name);
 }
 // Keeps the countdown current, and rolls the card over at midnight UTC.
 setInterval(refreshDaily, 30000);
@@ -898,6 +901,7 @@ window.addEventListener('keydown', (e) => {
   if (e.target.closest?.('input, textarea')) return;
   if (e.key === 'm' || e.key === 'M') toggleMute();
   if (cutscene.active && (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape')) cutscene.skip();
+  if (e.key === 'Escape' && !$('daily').hidden) hud.closeDaily();
 });
 
 requestAnimationFrame(frame);
