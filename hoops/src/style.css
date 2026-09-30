@@ -646,7 +646,7 @@ body {
 .submit-row {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
 }
 
 .submit-row input {
@@ -671,6 +671,10 @@ body {
 .submit-row input:disabled {
   color: var(--cream);
   opacity: 0.7;
+}
+
+.submit-status:empty {
+  display: none;
 }
 
 .submit-status {
@@ -984,13 +988,56 @@ body {
   text-shadow: 4px 4px 0 var(--ink);
 }
 
+/* The results screen packs tighter so it fits a phone without scrolling. */
+.panel-compact {
+  gap: 14px;
+  padding: 22px 18px 24px;
+}
+
+.panel-compact .over-title {
+  font-size: clamp(24px, 7vw, 34px);
+}
+
+.panel-compact .result-mode {
+  font-size: 18px;
+}
+
+.score-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 16px;
+}
+
+/* Play again on its own, Menu and Leaderboard side by side beneath it. */
+.actions-stack {
+  width: min(300px, 100%);
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 18px;
+}
+
+.actions-stack > .btn {
+  width: 100%;
+}
+
+.actions-row {
+  display: flex;
+  gap: 18px;
+}
+
+.actions-row .btn {
+  flex: 1;
+}
+
 .final {
   margin: 0;
   display: flex;
   align-items: baseline;
   gap: 10px;
   font-family: var(--pixel);
-  font-size: clamp(40px, 13vw, 64px);
+  font-size: clamp(40px, 12vw, 56px);
   color: var(--amber);
   text-shadow: 4px 4px 0 var(--ember), 8px 8px 0 var(--ink);
 }
@@ -1013,26 +1060,29 @@ body {
   animation: flicker 0.5s steps(2) infinite;
 }
 
+/* A strip of small tiles, one per stat; daily rounds drop Best and the
+   rest share the width. */
 .stats {
   margin: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px 16px;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
 }
 
 .stats div {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  padding-bottom: 6px;
-  border-bottom: 2px dotted rgba(138, 147, 184, 0.4);
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px 7px;
+  background: rgba(138, 147, 184, 0.12);
 }
 
 .stats dt {
-  font-size: 20px;
-  letter-spacing: 0.1em;
+  font-size: 15px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -1040,7 +1090,7 @@ body {
 .stats dd {
   margin: 0;
   font-family: var(--pixel);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--cream);
   font-variant-numeric: tabular-nums;
 }
@@ -1222,9 +1272,6 @@ body {
   }
   .lede {
     font-size: 21px;
-  }
-  .stats {
-    grid-template-columns: 1fr;
   }
 }
 

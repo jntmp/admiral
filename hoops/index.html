@@ -103,14 +103,16 @@
     </section>
 
     <section id="over" class="screen" hidden>
-      <div class="panel">
+      <div class="panel panel-compact">
         <h2 id="over-title" class="over-title">Time!</h2>
         <p id="result-mode" class="result-mode"></p>
-        <p class="final"><span id="final-score">0</span><span class="final-unit">pts</span></p>
-        <p id="new-best" class="new-best" hidden>New best!</p>
+        <div class="score-row">
+          <p class="final"><span id="final-score">0</span><span class="final-unit">pts</span></p>
+          <p id="new-best" class="new-best" hidden>New best!</p>
+        </div>
         <dl class="stats">
           <div><dt>Made</dt><dd id="stat-made">0/0</dd></div>
-          <div><dt>Accuracy</dt><dd id="stat-pct">0%</dd></div>
+          <div><dt title="Accuracy">Acc</dt><dd id="stat-pct">0%</dd></div>
           <div><dt>Streak</dt><dd id="stat-streak">0</dd></div>
           <div><dt>Best</dt><dd id="stat-best">0</dd></div>
         </dl>
@@ -122,8 +124,8 @@
         <p id="share-status" class="share-status" aria-live="polite"></p>
         <textarea id="share-text" class="share-fallback" rows="5" readonly hidden aria-label="Result to copy"></textarea>
         <form id="submit-form" class="submit-form" hidden>
-          <label for="initials">Enter your initials</label>
           <div class="submit-row">
+            <label for="initials">Save as</label>
             <input
               id="initials"
               name="initials"
@@ -137,10 +139,12 @@
           </div>
           <p id="submit-status" class="submit-status" aria-live="polite"></p>
         </form>
-        <div class="actions">
+        <div class="actions actions-stack">
           <button id="again" class="btn" type="button">Play again</button>
-          <button id="menu" class="btn btn-ghost" type="button">Menu</button>
-          <button id="board-from-over" class="btn btn-ghost" type="button" data-board>Leaderboard</button>
+          <div class="actions-row">
+            <button id="menu" class="btn btn-ghost btn-small" type="button">Menu</button>
+            <button id="board-from-over" class="btn btn-ghost btn-small" type="button" data-board>Leaderboard</button>
+          </div>
         </div>
       </div>
     </section>
