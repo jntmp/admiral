@@ -118,7 +118,9 @@ export class BoardUi {
     }
   }
 
+  // An opener can name the tab to open on, like data-board="daily".
   open(opener) {
+    if (opener.dataset.board) this.range = opener.dataset.board;
     this.opener = opener;
     this.returnTo = opener.closest('.screen');
     this.returnTo.hidden = true;

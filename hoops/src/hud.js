@@ -39,6 +39,7 @@ export class Hud {
     this.popups = $('popups');
     this.countdownEl = $('countdown');
     this.title = $('title');
+    this.dailyScreen = $('daily');
     this.over = $('over');
     this.power = $('power');
     this.segments = buildGauge($('power-bar'), 16);
@@ -56,6 +57,7 @@ export class Hud {
 
   showPlay() {
     this.title.hidden = true;
+    this.dailyScreen.hidden = true;
     this.over.hidden = true;
     this.root.hidden = false;
     this.last = {};
@@ -167,7 +169,10 @@ export class Hud {
 
   // The daily card on the title screen: today's twist, and your official
   // result once you've played it.
-  showDaily({ number, key, twist }, record, wait = '') {
+  // The daily challenge screen, and the daily button on the title screen:
+  // today's twist, your official result once you've played it, and a look
+  // at tomorrow's.
+  showDaily({ number, key, twist }, record, wait = '', tomorrow = '') {
     const date = new Date(`${key}T12:00:00Z`).toLocaleDateString(undefined, {
       day: 'numeric',
       month: 'short',
@@ -187,14 +192,29 @@ export class Hud {
     next.textContent = `Next daily in ${wait}`;
     $('daily-play').textContent = record ? 'Practice' : 'Play daily';
     $('daily-share').hidden = !record;
+    $('daily-tomorrow').textContent = tomorrow ? `Tomorrow: ${tomorrow}` : '';
+    $('daily-sub').textContent = record ? `Done · next in ${wait}` : twist.name;
+  }
+
+  openDaily() {
+    this.title.hidden = true;
+    this.dailyScreen.hidden = false;
+    $('daily-play').focus({ preventScroll: true });
+  }
+
+  closeDaily() {
+    this.dailyScreen.hidden = true;
+    this.title.hidden = false;
+    $('daily-open').focus({ preventScroll: true });
   }
 
   // Back from the results screen to the title screen.
   showMenu(best) {
     this.showTitle(best);
     this.over.hidden = true;
+    this.dailyScreen.hidden = true;
     this.title.hidden = false;
-    $('daily-play').focus({ preventScroll: true });
+    $('play').focus({ preventScroll: true });
   }
 
   showOver({ score, made, attempts, bestStreak, best, newBest, title = 'Time!', mode = '', practice = '', again = 'Play again' }) {

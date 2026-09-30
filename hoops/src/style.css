@@ -544,25 +544,41 @@ body {
   color: var(--cream);
 }
 
-.rules {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* The title screen's three choices, stacked full width. */
+.menu {
+  width: min(300px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 20px;
-  line-height: 1.1;
-  color: var(--muted);
+  gap: 22px;
+  margin: 6px 0 4px;
 }
 
-.rules b {
-  display: inline-block;
-  min-width: 3ch;
-  font-family: var(--pixel);
-  font-size: 12px;
-  font-weight: 400;
+.menu .btn {
+  width: 100%;
+}
+
+/* The daily button carries today's twist, or when the next one unlocks. */
+.btn.btn-daily {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 0 0 4px var(--amber), 6px 6px 0 4px var(--ink);
+}
+
+.btn.btn-daily:active {
+  box-shadow: 0 0 0 4px var(--amber), 2px 2px 0 4px var(--ink);
+}
+
+.btn-sub {
+  font-family: var(--terminal);
+  font-size: 19px;
+  letter-spacing: 0.06em;
   color: var(--amber);
+}
+
+.btn-sub:empty {
+  display: none;
 }
 
 .btn {
@@ -822,6 +838,14 @@ body {
 .daily-card .actions {
   margin-top: 6px;
   align-items: center;
+}
+
+.daily-how {
+  margin: 0;
+  max-width: 32ch;
+  font-size: 20px;
+  line-height: 1.15;
+  color: var(--muted);
 }
 
 .twist-tag {
@@ -1198,9 +1222,6 @@ body {
   }
   .lede {
     font-size: 21px;
-  }
-  .rules {
-    font-size: 18px;
   }
   .stats {
     grid-template-columns: 1fr;
