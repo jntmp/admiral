@@ -17,6 +17,13 @@ const EMPTY = {
   daily: "No one has played today's daily yet. Set the first score.",
   week: 'No scores this week yet. Set the first one.',
   all: 'No scores yet. Set the first one.',
+  speed: 'No speed rounds on the board yet. Set the first score.',
+};
+
+const CAPTIONS = {
+  week: 'Classic 60-second rounds',
+  all: 'Classic 60-second rounds',
+  speed: 'Speed rounds · all time',
 };
 
 // The leaderboard's two pieces of UI: the initials form on the results
@@ -64,7 +71,7 @@ export class BoardUi {
   offer(result) {
     this.result = result;
     this.mine = null;
-    this.range = result.daily ? 'daily' : 'week';
+    this.range = result.daily ? 'daily' : result.speed ? 'speed' : 'week';
     this.form.hidden =
       !this.leaderboard.enabled || result.score <= 0 || (result.daily && !result.official);
     this.input.disabled = false;
@@ -92,6 +99,10 @@ export class BoardUi {
         const { rankDay, players } = await this.leaderboard.submitDaily({ initials, day: result.daily.key, ...result });
         rank = `#${rankDay} of ${players}`;
         message = `Saved: ${rank} today.`;
+      } else if (result.speed) {
+        const { rankSpeed, players } = await this.leaderboard.submitSpeed({ initials, ...result });
+        rank = `#${rankSpeed} of ${players}`;
+        message = `Saved: ${rank} in speed.`;
       } else {
         const { rankWeek, rankAll, bestAll } = await this.leaderboard.submit({ initials, ...result });
         rank = `#${rankWeek} this week`;
@@ -139,9 +150,7 @@ export class BoardUi {
     this.range = range;
     this.tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.range === range)));
     this.caption.textContent =
-      range === 'daily' && this.today
-        ? `Daily #${this.today.number} · ${this.today.twist.name}`
-        : 'Classic 60-second rounds';
+      range === 'daily' && this.today ? `Daily #${this.today.number} · ${this.today.twist.name}` : (CAPTIONS[range] ?? '');
     const request = ++this.request;
     this.list.replaceChildren();
     this.status.textContent = 'Loading…';

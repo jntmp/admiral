@@ -84,8 +84,10 @@ export class Leaderboard {
 
   // Top scores, best first, one row per player; ties go to whoever set the
   // score first. 'daily' is today's challenge (UTC); 'week' (the last 7 days)
-  // and 'all' are classic rounds only.
+  // and 'all' are classic rounds only; 'speed' is all speed rounds, which
+  // live in a table of their own.
   top(range = 'all', limit = 10, now = Date.now()) {
+    if (range === 'speed') return this.request(`rpc/top_speed?${new URLSearchParams({ p_limit: String(limit) })}`);
     const params = new URLSearchParams({ p_board: range, p_limit: String(limit) });
     if (range === 'daily') params.set('p_day', new Date(now).toISOString().slice(0, 10));
     return this.request(`rpc/top_scores?${params}`);
@@ -107,6 +109,23 @@ export class Leaderboard {
     });
     const row = Array.isArray(rows) ? rows[0] : rows;
     return { rankAll: Number(row.rank_all), rankWeek: Number(row.rank_week), bestAll: Number(row.best_all) };
+  }
+
+  // Saves a speed round and returns where it placed among speed players.
+  async submitSpeed({ round, initials, score, made, attempts, bestStreak }) {
+    const rows = await this.request('rpc/submit_speed', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_round: round,
+        p_initials: initials,
+        p_score: score,
+        p_made: made,
+        p_attempts: attempts,
+        p_best_streak: bestStreak,
+      }),
+    });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return { rankSpeed: Number(row.rank_speed), players: Number(row.players) };
   }
 
   // Saves a daily-challenge round; `day` is the challenge's UTC date.

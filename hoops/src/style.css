@@ -566,6 +566,23 @@ body {
   box-shadow: 0 0 0 4px var(--amber), 6px 6px 0 4px var(--ink);
 }
 
+/* Speed rounds get the swish aqua, so the new mode stands apart. */
+.btn.btn-speed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 0 0 4px var(--swish), 6px 6px 0 4px var(--ink);
+}
+
+.btn.btn-speed:active {
+  box-shadow: 0 0 0 4px var(--swish), 2px 2px 0 4px var(--ink);
+}
+
+.btn-speed .btn-sub {
+  color: var(--swish);
+}
+
 .btn.btn-daily:active {
   box-shadow: 0 0 0 4px var(--amber), 2px 2px 0 4px var(--ink);
 }
@@ -697,14 +714,16 @@ body {
 
 .tabs {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
 }
 
 .tab {
   font-family: var(--pixel);
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
-  padding: 9px 12px 8px;
+  padding: 9px 9px 8px;
   color: var(--muted);
   background: transparent;
   border: 0;

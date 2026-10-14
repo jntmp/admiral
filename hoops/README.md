@@ -18,6 +18,20 @@ npm test         # physics and shot-mapping tests (node:test, no browser)
 
 Every push to `master` that touches `hoops/` is tested, built and deployed to GitHub Pages by `.github/workflows/hoops-pages.yml`. Pull requests get the tests and build without the deploy.
 
+### Cloudflare
+
+The game is also served from Cloudflare Workers as static assets (`hoops/wrangler.jsonc`), deployed by `.github/workflows/hoops-cloudflare.yml`:
+
+- A push to `master` deploys production, at `pixel-hoops.<your-subdomain>.workers.dev`.
+- A push to any other branch creates or updates that branch's [Preview](https://developers.cloudflare.com/workers/previews/), whose URL stays the same from commit to commit: branch `claude/hoops-speed-mode` becomes `claude-hoops-speed-mode-pixel-hoops.<your-subdomain>.workers.dev`. The run's summary, and the deployment on the pull request, link to it.
+
+The workflow needs two repository secrets (**Settings → Secrets and variables → Actions**). Until they're set, it still builds and tests, and skips the deploy.
+
+- `CLOUDFLARE_ACCOUNT_ID`: on the Cloudflare dashboard, **Workers & Pages**, in the account details.
+- `CLOUDFLARE_API_TOKEN`: **My Profile → API Tokens → Create Token**, using the **Edit Cloudflare Workers** template.
+
+To deploy by hand: `npm run build`, then `npx wrangler deploy` (production) or `npx wrangler preview` (a Preview named after your branch).
+
 ## How to play
 
 - **Drag up and release** anywhere on the court to shoot. Drag length sets power; the angle of the drag bends the shot left or right.
@@ -27,6 +41,7 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 - **Three in a row** and you're on fire: every make scores double until you miss.
 - Shooting spots drift further out as you score. After 12 makes the hoop starts sliding side to side, and after 18 it speeds up.
 - A shot in the air when the buzzer goes still counts.
+- **Speed** rounds don't wait for the ball: the moment you shoot, the camera moves to the next spot and your next ball is ready, so you can have several in the air at once. Every make, swish, fire streak and callout works as usual, and the round ends once the last ball in the air comes down after the buzzer. Speed rounds keep their own best score and leaderboard.
 - Your first **airball** of a session cuts to the fan cam: the ball finds the popcorn fan in the front row behind the hoop, right in the face. The clock stops for the cutscene; tap (or press Space, Enter or Escape) to skip it. It plays once per browser session, so later airballs just get the usual callout.
 - **M** or the speaker button toggles sound. Your best score is kept in `localStorage`.
 - After a round, enter three initials (letters only, arcade style) to post your score to the **online leaderboard**, then see where you rank this week and all time. The leaderboard is also on the title screen.
@@ -35,7 +50,7 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 
 ### Daily challenge
 
-The title screen has three choices: **Play** (a classic round), **Daily challenge** and **Leaderboard**. Daily challenge opens its own screen with today's twist, your result once you've played, a countdown to the next one, tomorrow's twist and a shortcut to today's board.
+The title screen has four choices: **Play** (a classic round), **Speed**, **Daily challenge** and **Leaderboard**. Daily challenge opens its own screen with today's twist, your result once you've played, a countdown to the next one, tomorrow's twist and a shortcut to today's board.
 
 Everyone plays the same round each day: the date (UTC) picks the twist and seeds the shooting spots, so every player's nth shot is from the same place. Your first daily round of the day is the official one and goes on the daily leaderboard; later rounds that day are practice. **Menu** on the results screen goes back to the title screen.
 
@@ -68,7 +83,8 @@ Everyone plays the same round each day: the date (UTC) picks the twist and seeds
 | `src/daily.js` | Daily challenge: the day's twist, seeded shooting spots, scoring rules, share text |
 | `src/share.js` | Share card: squares on the results screen, share sheet or clipboard |
 | `src/cutscene.js` | The airball fan cam: the popcorn fan, the staged ball, the popcorn burst and the camera |
-| `supabase/migrations/` | The leaderboard's table and access rules, and the `submit_score`, `submit_daily` and `top_scores` functions |
+| `supabase/migrations/` | The leaderboard tables and access rules, and the `submit_score`, `submit_daily`, `submit_speed`, `top_scores` and `top_speed` functions |
+| `wrangler.jsonc` | Cloudflare Workers config: the built site in `dist/` served as static assets |
 
 Every throw is aimed so the ball would drop into the rim at a fixed entry angle (46°), so a perfect swipe is a swish from any spot. Difficulty comes from how far a real swipe strays from perfect. Tune the feel in `src/config.js`: `SHOT.powerSensitivity` and `SHOT.aimSensitivity` set how forgiving swipes are, `RIM.radius` sets the size of the target, and `GAME` holds the round length and when the hoop starts moving.
 
@@ -79,6 +95,7 @@ Scores live in the Supabase project set in `LEADERBOARD` in `src/config.js`; cle
 The game runs in the browser, so a determined player can always send a fake score. The database keeps that bounded:
 
 - Anyone can read `scores`, but nobody can insert, edit or delete rows directly. Every write goes through `submit_score()` or `submit_daily()`.
+- Speed rounds live in a table of their own, `speed_scores`, written through `submit_speed()` and read through `top_speed()`, so the new mode can't affect classic or daily boards. They follow the same rules (one entry per player at their all-time speed best, retry-safe saves, the shared throttle), with room for twice the shots, since a speed round can take far more.
 - Only a player's new best is stored. Initials are the only identity the game has, so they stand for the player: a round that doesn't beat that player's best on its board (last 7 days for classic rounds, the same day for a daily) is turned down with a 409 and a message saying what the best is. The game reads boards through `top_scores()`, which lists each player once at their best.
 - Check constraints reject anything a real round can't produce: initials must be exactly three capital letters, as on an arcade high-score table; there are at most 60 attempts, no more makes than attempts, and at most 8 points per make (a swished three, doubled on fire).
 - Each client can submit 5 scores a minute. Clients are tracked by a salted hash of their IP address, kept for an hour at most, in a schema the API doesn't expose.

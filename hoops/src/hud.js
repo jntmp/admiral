@@ -163,12 +163,13 @@ export class Hud {
     if (text !== null) this.countdownEl.textContent = text;
   }
 
-  showTitle(best) {
+  // Your classic best, and your speed best once you have one.
+  showTitle(best, speedBest = 0) {
     $('best-title').textContent = best;
+    $('best-speed').textContent = speedBest;
+    $('best-speed-wrap').hidden = !speedBest;
   }
 
-  // The daily card on the title screen: today's twist, and your official
-  // result once you've played it.
   // The daily challenge screen, and the daily button on the title screen:
   // today's twist, your official result once you've played it, and a look
   // at tomorrow's.
@@ -209,15 +210,27 @@ export class Hud {
   }
 
   // Back from the results screen to the title screen.
-  showMenu(best) {
-    this.showTitle(best);
+  showMenu(best, speedBest) {
+    this.showTitle(best, speedBest);
     this.over.hidden = true;
     this.dailyScreen.hidden = true;
     this.title.hidden = false;
     $('play').focus({ preventScroll: true });
   }
 
-  showOver({ score, made, attempts, bestStreak, best, newBest, title = 'Time!', mode = '', practice = '', again = 'Play again' }) {
+  showOver({
+    score,
+    made,
+    attempts,
+    bestStreak,
+    best,
+    showBest = true,
+    newBest,
+    title = 'Time!',
+    mode = '',
+    practice = '',
+    again = 'Play again',
+  }) {
     this.root.hidden = true;
     this.countdown(null);
     $('over-title').textContent = title;
@@ -231,8 +244,8 @@ export class Hud {
     $('stat-pct').textContent = `${attempts ? Math.round((made / attempts) * 100) : 0}%`;
     $('stat-streak').textContent = bestStreak;
     $('stat-best').textContent = best;
-    // The best score is a classic-round record; daily rounds don't touch it.
-    $('stat-best').parentElement.hidden = Boolean(mode) && !mode.startsWith('Classic');
+    // Classic and speed rounds each keep a best; daily rounds don't touch it.
+    $('stat-best').parentElement.hidden = !showBest;
     $('new-best').hidden = !newBest;
     this.over.hidden = false;
     $('again').focus({ preventScroll: true });

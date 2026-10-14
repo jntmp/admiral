@@ -1,0 +1,16 @@
+// Cloudflare Workers config. The game is a static site, so the Worker is
+// just its built files in dist/, served as static assets.
+//
+// master deploys to production (wrangler deploy); every other branch gets
+// its own Preview with a stable URL (wrangler preview). The GitHub Actions
+// workflow in .github/workflows/hoops-cloudflare.yml runs both.
+{
+  "name": "pixel-hoops",
+  "compatibility_date": "2026-10-14",
+  "assets": {
+    "directory": "./dist"
+  },
+  // Previews use the same settings as production: there are no bindings,
+  // variables or secrets to keep apart.
+  "previews": {}
+}

@@ -65,13 +65,19 @@
         <p class="lede">60 seconds. Drag up and let go to shoot.</p>
         <nav class="menu" aria-label="Main menu">
           <button id="play" class="btn" type="button">Play</button>
+          <button id="speed-play" class="btn btn-ghost btn-speed" type="button">
+            Speed
+            <span class="btn-sub">New · no waiting</span>
+          </button>
           <button id="daily-open" class="btn btn-ghost btn-daily" type="button">
             Daily challenge
             <span id="daily-sub" class="btn-sub"></span>
           </button>
           <button id="board-from-title" class="btn btn-ghost" type="button" data-board>Leaderboard</button>
         </nav>
-        <p class="best-line">Best <span id="best-title">0</span></p>
+        <p class="best-line">
+          Best <span id="best-title">0</span><span id="best-speed-wrap" hidden> · Speed <span id="best-speed">0</span></span>
+        </p>
       </div>
     </section>
 
@@ -156,6 +162,7 @@
           <button id="tab-daily" class="tab" type="button" role="tab" aria-selected="false" data-range="daily">Daily</button>
           <button id="tab-week" class="tab" type="button" role="tab" aria-selected="true" data-range="week">Week</button>
           <button id="tab-all" class="tab" type="button" role="tab" aria-selected="false" data-range="all">All time</button>
+          <button id="tab-speed" class="tab" type="button" role="tab" aria-selected="false" data-range="speed">Speed</button>
         </div>
         <p id="board-caption" class="board-caption"></p>
         <ol id="board-list" class="board-list"></ol>

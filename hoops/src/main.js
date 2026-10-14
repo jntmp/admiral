@@ -103,6 +103,7 @@ const game = {
   countdown: 0,
   lastTick: null,
   best: store.get('best', 0),
+  speedBest: store.get('best-speed', 0),
   spot: new Vector3(0, 0, 5),
   three: false,
   shot: null,
@@ -286,6 +287,11 @@ function onFire() {
   return game.streak >= GAME.fireStreak;
 }
 
+// The best score for the kind of round being played: classic or speed.
+function modeBest() {
+  return game.speed ? game.speedBest : game.best;
+}
+
 function nextSpot(first = false) {
   if (game.daily) {
     const { spots } = game.daily;
@@ -295,7 +301,7 @@ function nextSpot(first = false) {
   }
   game.three = isThreePointer(game.spot.x, game.spot.z);
   poseFor(game.spot, tmpPos, tmpLook);
-  tweenCamera(tmpPos, tmpLook, first ? 1.2 : 0.6);
+  tweenCamera(tmpPos, tmpLook, first ? 1.2 : game.speed ? GAME.speedMoveTime : GAME.moveTime);
   hud.setShot(game.three, Math.round(Math.hypot(game.spot.x, game.spot.z) / 0.3048));
   game.phase = 'moving';
 }
@@ -320,11 +326,17 @@ function throwBall(shot) {
   // Backspin: the top of the ball rolls back toward the shooter.
   b.spin.crossVectors(tmpPos.set(vel.x, 0, vel.z).normalize(), UP).multiplyScalar(16);
   balls.push(b);
-  game.shot = b;
   game.attempts++;
-  game.phase = 'flying';
   hud.hint(false);
   sfx.whoosh();
+  if (game.speed) {
+    // Speed rounds don't wait for the ball: straight on to the next spot,
+    // while this one is still in the air.
+    nextSpot();
+  } else {
+    game.shot = b;
+    game.phase = 'flying';
+  }
 }
 
 const screenPos = new Vector3();
@@ -385,7 +397,7 @@ function onMake(b, swish) {
   particles.confetti(screenPos.set(hoop.x, RIM.y - 0.2, 0.1), CONFETTI, swish ? 80 : 50);
   sfx.swish();
   sfx.score(points, multiplier > 1);
-  settle(0.6);
+  afterShot(0.6);
 }
 
 // It went in, but today's twist says it doesn't count.
@@ -397,7 +409,7 @@ function onVoid() {
   hud.popup(x, y, { word, kind: 'miss' });
   sfx.swish();
   sfx.miss();
-  settle(0.5);
+  afterShot(0.5);
 }
 
 function onMiss(b) {
@@ -415,7 +427,7 @@ function onMiss(b) {
   }
   const carryOn = () => {
     if (sudden) sfx.buzzer();
-    settle(sudden ? 1 : 0.4);
+    afterShot(sudden ? 1 : 0.4);
   };
   if (airball && game.mode === 'play' && fanCamDue()) {
     fanCamShown();
@@ -458,6 +470,10 @@ function airballCut(b, wasOnFire, carryOn) {
     removeBall(b);
   }
   game.shot = null;
+  // In a speed round the shooter is already lining up the next ball: drop any
+  // aim in progress and pick up from there once it cuts back.
+  const resume = game.phase === 'aiming' ? 'ready' : game.phase;
+  if (game.phase === 'aiming') cancelAim();
   game.phase = 'cutscene';
   hud.fanCam(true, 'Airball!');
   cutscene.start({
@@ -472,6 +488,7 @@ function airballCut(b, wasOnFire, carryOn) {
         const [x, y] = rimOnScreen();
         hud.popup(x, y, { word: 'Fire out', kind: 'miss' });
       }
+      if (game.speed) game.phase = resume;
       carryOn();
     },
   });
@@ -483,12 +500,32 @@ function settle(delay) {
   game.phaseTimer = delay;
 }
 
-function checkShot() {
-  const b = game.shot;
-  if (!b || b.resolved || b.body.scored) return;
-  const { pos, vel, inNet, age, floorHits } = b.body;
-  const fellAway = vel.y < 0 && pos.y < RIM.y - 0.45 && !inNet;
-  if (fellAway || floorHits > 0 || age > 4) onMiss(b);
+// Once a shot is decided, a classic round pauses on it before the next spot.
+// A speed round has already moved on.
+function afterShot(delay) {
+  if (!game.speed) settle(delay);
+}
+
+function cancelAim() {
+  pointer.id = null;
+  canvas.classList.remove('aiming');
+  aim.hide();
+}
+
+// Every shot still in the air: one at a time in a classic round, often
+// several in a speed round.
+function pendingShots() {
+  return balls.some((b) => b.shot && !b.resolved);
+}
+
+// A shot is a miss once it drops away below the rim, lands, or takes too long.
+function checkShots() {
+  for (const b of balls.slice()) {
+    if (!b.shot || b.resolved || b.body.scored) continue;
+    const { pos, vel, inNet, age, floorHits } = b.body;
+    const fellAway = vel.y < 0 && pos.y < RIM.y - 0.45 && !inNet;
+    if (fellAway || floorHits > 0 || age > 4) onMiss(b);
+  }
 }
 
 // ---------------------------------------------------------------- flow
@@ -500,8 +537,8 @@ function today() {
 
 const dailyRecordKey = (key) => `daily:${key}`;
 
-// mode is 'classic' or 'daily'. The first daily round of the day is the
-// official one; later ones that day are practice.
+// mode is 'classic', 'speed' or 'daily'. The first daily round of the day is
+// the official one; later ones that day are practice.
 function startGame(mode = 'classic') {
   sfx.unlock();
   let daily = null;
@@ -527,20 +564,18 @@ function startGame(mode = 'classic') {
     shot: null,
     round: newRoundId(),
     daily,
+    speed: mode === 'speed',
     lastMode: mode,
     shots: [],
     endReason: null,
   });
   hud.showPlay();
   hud.hint(true);
-  hud.setTwist(daily ? `${daily.official ? 'Daily' : 'Practice'} · ${daily.twist.short}` : null);
-  if (daily) {
-    hud.popup(window.innerWidth / 2, window.innerHeight * 0.26, {
-      word: daily.twist.name,
-      detail: daily.twist.rule,
-      kind: 'banner intro',
-    });
-  }
+  hud.setTwist(daily ? `${daily.official ? 'Daily' : 'Practice'} · ${daily.twist.short}` : game.speed ? 'Speed round' : null);
+  const intro = daily
+    ? { word: daily.twist.name, detail: daily.twist.rule }
+    : game.speed && { word: 'Speed round', detail: "No waiting: your next ball is ready the moment you shoot." };
+  if (intro) hud.popup(window.innerWidth / 2, window.innerHeight * 0.26, { ...intro, kind: 'banner intro' });
   sfx.tick();
   nextSpot(true);
 }
@@ -551,10 +586,14 @@ function endGame() {
   if (held) removeBall(held);
   held = null;
   aim.hide();
-  const { daily } = game;
-  // Daily rounds play by different rules, so only classic rounds set a best.
-  const newBest = !daily && game.score > game.best;
-  if (newBest) {
+  const { daily, speed } = game;
+  // Daily rounds play by different rules, so they don't set a best; classic
+  // and speed rounds each keep their own.
+  const newBest = !daily && game.score > modeBest();
+  if (newBest && speed) {
+    game.speedBest = game.score;
+    store.set('best-speed', game.speedBest);
+  } else if (newBest) {
     game.best = game.score;
     store.set('best', game.best);
   }
@@ -567,6 +606,7 @@ function endGame() {
     shots: game.shots.slice(),
     daily: daily && { key: daily.key, number: daily.number, twist: daily.twist },
     official: Boolean(daily?.official),
+    speed,
   };
   let practice = '';
   if (daily?.official) {
@@ -581,10 +621,11 @@ function endGame() {
     made: game.makes,
     attempts: game.attempts,
     bestStreak: game.bestStreak,
-    best: game.best,
+    best: modeBest(),
+    showBest: !daily,
     newBest,
     title: game.endReason === 'sudden' ? 'Sudden death!' : 'Time!',
-    mode: daily ? `Daily #${daily.number} · ${daily.twist.name}` : 'Classic · 60 seconds',
+    mode: daily ? `Daily #${daily.number} · ${daily.twist.name}` : speed ? 'Speed · 60 seconds' : 'Classic · 60 seconds',
     practice,
     // Replaying a daily is always practice once the official round is in.
     again: daily ? 'Practice again' : 'Play again',
@@ -626,10 +667,13 @@ function updateClock(dt) {
   game.time = 0;
   game.buzzer = true;
   sfx.buzzer();
-  if (game.phase !== 'flying') {
-    pointer.id = null;
-    canvas.classList.remove('aiming');
-    aim.hide();
+  if (game.speed) {
+    // No more throws, but balls already in the air still count: the round
+    // ends once they're all down (see updatePhase).
+    cancelAim();
+    if (game.phase !== 'cutscene') game.phase = 'finishing';
+  } else if (game.phase !== 'flying') {
+    cancelAim();
     settle(0.8);
   }
 }
@@ -644,7 +688,8 @@ function updatePhase(dt) {
       else nextSpot();
     }
   }
-  checkShot();
+  checkShots();
+  if (game.phase === 'finishing' && !pendingShots()) settle(0.8);
 }
 
 // Keep the court lively behind the title and results screens.
@@ -735,7 +780,7 @@ function updateBalls(dt) {
     }
     const dead = b.life > 5 && (!b.shot || b.resolved);
     if (dead) b.mesh.scale.setScalar(Math.max(0, 1 - (b.life - 5) * 3));
-    if ((dead && b.life > 5.33) || (balls.length > 7 && i === 0 && b !== game.shot)) {
+    if ((dead && b.life > 5.33) || (balls.length > 7 && i === 0 && (!b.shot || b.resolved))) {
       removeBall(b);
       balls.splice(i, 1);
     }
@@ -778,7 +823,8 @@ function updatePower(dt) {
 }
 
 function updateHud() {
-  scoreboard.update(game.mode === 'title' ? 0 : game.score, game.mode === 'title' ? GAME.duration : game.time, game.best);
+  const title = game.mode === 'title';
+  scoreboard.update(title ? 0 : game.score, title ? GAME.duration : game.time, title ? game.best : modeBest());
   if (game.mode !== 'play' && game.mode !== 'countdown') return;
   hud.setScore(game.score);
   hud.setTime(game.time);
@@ -807,7 +853,9 @@ function frame(now) {
   updateClock(dt);
   updateHoop(dt);
   updateDemo(dt);
-  updateBalls(dt);
+  // The fan cam freezes the court, so balls still in the air in a speed round
+  // pick up where they left off when it cuts back.
+  if (!cutscene.active) updateBalls(dt);
   updatePhase(dt);
   cutscene.update(dt, game.clock);
   updateCamera(dt);
@@ -826,8 +874,9 @@ function frame(now) {
 
 const $ = (id) => document.getElementById(id);
 
-hud.showTitle(game.best);
+hud.showTitle(game.best, game.speedBest);
 $('play').addEventListener('click', () => startGame('classic'));
+$('speed-play').addEventListener('click', () => startGame('speed'));
 $('daily-play').addEventListener('click', () => startGame('daily'));
 $('daily-open').addEventListener('click', () => hud.openDaily());
 $('daily-back').addEventListener('click', () => hud.closeDaily());
@@ -835,7 +884,7 @@ $('again').addEventListener('click', () => startGame(game.lastMode ?? 'classic')
 $('menu').addEventListener('click', () => {
   game.mode = 'title';
   game.phase = 'idle';
-  hud.showMenu(game.best);
+  hud.showMenu(game.best, game.speedBest);
   refreshDaily();
 });
 

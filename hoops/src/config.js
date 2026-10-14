@@ -75,4 +75,8 @@ export const GAME = {
   fireStreak: 3,
   movingHoopAt: 12,
   fastHoopAt: 18,
+  // Seconds the camera takes between spots: classic, and speed rounds, where
+  // it moves on the moment the ball leaves your hand.
+  moveTime: 0.6,
+  speedMoveTime: 0.35,
 };

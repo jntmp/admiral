@@ -53,6 +53,32 @@ test('boards are read through top_scores, one row per player', async () => {
   assert.equal(week.searchParams.get('p_limit'), '5');
 });
 
+test('the speed board comes from top_speed, which only needs a limit', async () => {
+  const { fetch, calls } = fakeFetch({ body: [{ initials: 'ABC', score: 88 }] });
+  const board = new Leaderboard(config, fetch);
+  assert.deepEqual(await board.top('speed', 5), [{ initials: 'ABC', score: 88 }]);
+  const url = new URL(calls[0].url);
+  assert.equal(url.origin + url.pathname, 'https://example.supabase.co/rest/v1/rpc/top_speed');
+  assert.equal(url.searchParams.get('p_limit'), '5');
+  assert.equal(url.searchParams.get('p_board'), null);
+});
+
+test('speed rounds post to submit_speed and get a rank among speed players', async () => {
+  const { fetch, calls } = fakeFetch({ body: [{ rank_speed: 2, players: 9 }] });
+  const board = new Leaderboard(config, fetch);
+  const result = await board.submitSpeed({ ...entry, score: 88, made: 24, attempts: 70 });
+  assert.deepEqual(result, { rankSpeed: 2, players: 9 });
+  assert.equal(calls[0].url, 'https://example.supabase.co/rest/v1/rpc/submit_speed');
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    p_round: entry.round,
+    p_initials: 'ABC',
+    p_score: 88,
+    p_made: 24,
+    p_attempts: 70,
+    p_best_streak: 5,
+  });
+});
+
 test("the daily board is today's challenge (UTC)", async () => {
   const { fetch, calls } = fakeFetch({ body: [] });
   const board = new Leaderboard(config, fetch);
