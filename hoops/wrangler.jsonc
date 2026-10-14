@@ -1,11 +1,13 @@
 // Cloudflare Workers config. The game is a static site, so the Worker is
 // just its built files in dist/, served as static assets.
 //
-// master deploys to production (wrangler deploy); every other branch gets
-// its own Preview with a stable URL (wrangler preview). The GitHub Actions
-// workflow in .github/workflows/hoops-cloudflare.yml runs both.
+// The repository is connected to the "admiral" Worker with Workers Builds,
+// rooted at hoops/: pushes to master deploy production (wrangler deploy),
+// and pushes to any other branch create or update that branch's Preview
+// (wrangler preview). The name here must match the Worker's name in the
+// Cloudflare dashboard, or the build fails.
 {
-  "name": "pixel-hoops",
+  "name": "admiral",
   "compatibility_date": "2026-10-14",
   "assets": {
     "directory": "./dist"

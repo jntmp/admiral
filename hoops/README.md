@@ -20,17 +20,22 @@ Every push to `master` that touches `hoops/` is tested, built and deployed to Gi
 
 ### Cloudflare
 
-The game is also served from Cloudflare Workers as static assets (`hoops/wrangler.jsonc`), deployed by `.github/workflows/hoops-cloudflare.yml`:
+The game is also served from Cloudflare Workers as static assets (`hoops/wrangler.jsonc`). The repository is connected to the `admiral` Worker with [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/), so Cloudflare builds it on every push:
 
-- A push to `master` deploys production, at `pixel-hoops.<your-subdomain>.workers.dev`.
-- A push to any other branch creates or updates that branch's [Preview](https://developers.cloudflare.com/workers/previews/), whose URL stays the same from commit to commit: branch `claude/hoops-speed-mode` becomes `claude-hoops-speed-mode-pixel-hoops.<your-subdomain>.workers.dev`. The run's summary, and the deployment on the pull request, link to it.
+- A push to `master` deploys production, at `admiral.<your-subdomain>.workers.dev`.
+- A push to any other branch creates or updates that branch's [Preview](https://developers.cloudflare.com/workers/previews/), whose URL stays the same from commit to commit. Find it under the Worker's **Previews**, or in Cloudflare's comment on the pull request. A branch only builds when it gets a new push after the connection was made.
 
-The workflow needs two repository secrets (**Settings → Secrets and variables → Actions**). Until they're set, it still builds and tests, and skips the deploy.
+The Worker's build settings (**Settings → Build**):
 
-- `CLOUDFLARE_ACCOUNT_ID`: on the Cloudflare dashboard, **Workers & Pages**, in the account details.
-- `CLOUDFLARE_API_TOKEN`: **My Profile → API Tokens → Create Token**, using the **Edit Cloudflare Workers** template.
+| Setting | Value |
+|---|---|
+| Root directory | `hoops` |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Preview command | `npx wrangler preview` |
+| Branch control | production branch `master`, **Enable Preview Builds** on |
 
-To deploy by hand: `npm run build`, then `npx wrangler deploy` (production) or `npx wrangler preview` (a Preview named after your branch).
+The `name` in `wrangler.jsonc` must match the Worker's name in the dashboard, or the build fails.
 
 ## How to play
 
