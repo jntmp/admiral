@@ -18,6 +18,25 @@ npm test         # physics and shot-mapping tests (node:test, no browser)
 
 Every push to `master` that touches `hoops/` is tested, built and deployed to GitHub Pages by `.github/workflows/hoops-pages.yml`. Pull requests get the tests and build without the deploy.
 
+### Cloudflare
+
+The game is also served from Cloudflare Workers as static assets (`hoops/wrangler.jsonc`). The repository is connected to the `admiral` Worker with [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/), so Cloudflare builds it on every push:
+
+- A push to `master` deploys production, at `admiral.<your-subdomain>.workers.dev`.
+- A push to any other branch creates or updates that branch's [Preview](https://developers.cloudflare.com/workers/previews/), whose URL stays the same from commit to commit. Find it under the Worker's **Previews**, or in Cloudflare's comment on the pull request. A branch only builds when it gets a new push after the connection was made.
+
+The Worker's build settings (**Settings → Build**):
+
+| Setting | Value |
+|---|---|
+| Root directory | `hoops` |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Preview command | `npx wrangler preview` |
+| Branch control | production branch `master`, **Enable Preview Builds** on |
+
+The `name` in `wrangler.jsonc` must match the Worker's name in the dashboard, or the build fails.
+
 ## How to play
 
 - **Drag up and release** anywhere on the court to shoot. Drag length sets power; the angle of the drag bends the shot left or right.
@@ -69,6 +88,7 @@ Everyone plays the same round each day: the date (UTC) picks the twist and seeds
 | `src/share.js` | Share card: squares on the results screen, share sheet or clipboard |
 | `src/cutscene.js` | The airball fan cam: the popcorn fan, the staged ball, the popcorn burst and the camera |
 | `supabase/migrations/` | The leaderboard's table and access rules, and the `submit_score`, `submit_daily` and `top_scores` functions |
+| `wrangler.jsonc` | Cloudflare Workers config: the built site in `dist/` served as static assets |
 
 Every throw is aimed so the ball would drop into the rim at a fixed entry angle (46°), so a perfect swipe is a swish from any spot. Difficulty comes from how far a real swipe strays from perfect. Tune the feel in `src/config.js`: `SHOT.powerSensitivity` and `SHOT.aimSensitivity` set how forgiving swipes are, `RIM.radius` sets the size of the target, and `GAME` holds the round length and when the hoop starts moving.
 
